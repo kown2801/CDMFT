@@ -1,0 +1,27 @@
+{
+	"Parameters" : {
+        "HYB":"IN/Hyb1.json",
+    	"LINKN":"LinkN.json",
+    	"LINKA":"LinkA.json",
+    	"SEED": 82149,
+        "CLEAN_EVERY_SWEEP": 5000,
+        "SAMPLE_EVERY_SWEEP": 50,
+        "STORE_EVERY_SAMPLE": 100,
+        "MEASUREMENT_TIME" : 1.0,
+        "THERMALIZATION_TIME": 0.1,
+        "PROBFLIP": 0.01,
+        "beta": 64,
+        "mu": 11.650,
+        "tpd": 1.5,
+        "tpp": 1.0,
+        "ep": 9.0,
+        "U": 12.0,
+        "weightR": 0.30,
+        "weightI": 0.0,
+        "EGreen": 25,
+        "EHyb": 15,
+        "EObs": 15,
+        "EOrder": 1000,
+        "delta": 1
+    }
+}
