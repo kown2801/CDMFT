@@ -41,6 +41,15 @@ int main(int argc, char** argv)
 		double const beta = readParams("beta")->getDouble();
 		double const tpd = readParams("tpd")->getDouble();
 		double const tpp = readParams("tpp")->getDouble();
+		double tppp = tpp;
+		//We want to read tppp if it is defined in the parameter file
+		bool existstppp;
+		const newIO::GenericReader* tpppRead = readParams("tppp",existstppp);
+		if(tpppRead) {
+			std::cout << "We have tppp different than tpp" << std::endl;
+			tppp = tpppRead->getDouble();
+		}
+		//End of tppp read
 		double const ep = readParams("ep")->getDouble();
 
 		std::complex<double> w = .0;
@@ -359,7 +368,7 @@ int main(int argc, char** argv)
 			         << selfEnergy[n]("d_0Up", "d_1Down").real() << " " << selfEnergy[n]("d_0Up", "d_1Down").imag() << " "
 			         << selfEnergy[n]("d_1Up", "d_2Down").real() << " " << selfEnergy[n]("d_1Up", "d_2Down").imag() << std::endl;
 			
-			RCuLatticeGreen latticeGreenRCu(iomega + mu, tpd, tpp, ep, selfEnergy[n]); 
+			RCuLatticeGreen latticeGreenRCu(iomega + mu, tpd, tpp, tppp, ep, selfEnergy[n]); 
 			RCuMatrix greenNext = integrator(latticeGreenRCu, M_PI/2., M_PI/2.);
 
 			greenFile << iomega.imag() << " "  

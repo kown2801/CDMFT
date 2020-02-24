@@ -11,7 +11,7 @@ typedef Fl::FlavorMatrix<8, RCuNames, RCuNames> RCuMatrix;
 typedef Fl::FlavorMatrix<3, CuONames, CuONames> CuOMatrix;
 
 struct G0RCuInv {
-	G0RCuInv(double tpd, double tpp, double ep) : tpd_(tpd), tpp_(tpp), ep_(ep) {};
+	G0RCuInv(double tpd, double tpp, double tppp, double ep) : tpd_(tpd), tpp_(tpp), tppp_(tppp), ep_(ep) {};
 	
 	RCuMatrix const& operator()(std::complex<double> z, double kx, double ky) {
 		result_ = .0;
@@ -25,6 +25,7 @@ struct G0RCuInv {
 private:
 	double const tpd_;
 	double const tpp_;
+	double const tppp_;
 	double const ep_;
 	
 	RCuMatrix result_;
@@ -44,12 +45,12 @@ private:
 		std::complex<double> exp_mky = std::conj(exp_ky);
 		
 		G0kFullInv_        = CuOMatrix::Diag(z);  G0kFullInv_(0, 1) -= tpd_*(1. - exp_mkx);                G0kFullInv_(0, 2) -= tpd_*(1. - exp_mky);
-		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ + 2.*tpp_*(coskx - 1.);         G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
-		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  G0kFullInv_(2, 2) -= ep_ + 2.*tpp_*(cosky - 1.);
+		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
+		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  G0kFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
 		
 		G0mkFullInv_        = CuOMatrix::Diag(z);   G0mkFullInv_(0, 1) -= tpd_*(1. - exp_kx);                 G0mkFullInv_(0, 2) -= tpd_*(1. - exp_ky);
-		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ + 2.*tpp_*(coskx - 1.);         G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
-		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);  G0mkFullInv_(2, 2) -= ep_ + 2.*tpp_*(cosky - 1.);
+		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
+		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);  G0mkFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
 		
 		G0kFullInv_.inv(G0kFull_);
 		
@@ -73,7 +74,7 @@ typedef Fl::FlavorMatrix<24, RCuONames, RCuONames> RCuOMatrix;
 
 
 struct G0RCuOInv {
-	G0RCuOInv(double tpd, double tpp, double ep) : tpd_(tpd), tpp_(tpp), ep_(ep) {};
+	G0RCuOInv(double tpd, double tpp, double tppp, double ep) : tpd_(tpd), tpp_(tpp), tppp_(tppp), ep_(ep) {};
 	
 	RCuOMatrix const& operator()(std::complex<double> z, double kx, double ky) {
 		result_ = .0;
@@ -87,6 +88,7 @@ struct G0RCuOInv {
 private:
 	double const tpd_;
 	double const tpp_;
+	double const tppp_;
 	double const ep_;
 	
 	RCuOMatrix result_;
@@ -104,12 +106,12 @@ private:
 		std::complex<double> exp_mky = std::conj(exp_ky);
 		
 		G0kFullInv_        = CuOMatrix::Diag(z);  G0kFullInv_(0, 1) -= tpd_*(1. - exp_mkx);                G0kFullInv_(0, 2) -= tpd_*(1. - exp_mky);
-		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ + 2.*tpp_*(coskx - 1.);         G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
-		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  G0kFullInv_(2, 2) -= ep_ + 2.*tpp_*(cosky - 1.);
+		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
+		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  G0kFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
 		
 		G0mkFullInv_        = CuOMatrix::Diag(z);   G0mkFullInv_(0, 1) -= tpd_*(1. - exp_kx);                 G0mkFullInv_(0, 2) -= tpd_*(1. - exp_ky);
-		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ + 2.*tpp_*(coskx - 1.);         G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
-		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);  G0mkFullInv_(2, 2) -= ep_ + 2.*tpp_*(cosky - 1.);
+		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
+		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);  G0mkFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
 		
 		std::complex<double> v[] = {1., exp_kx, exp_kx*exp_ky, exp_ky};
 		
@@ -128,7 +130,7 @@ private:
 
 
 struct RCuLatticeGreen {
-	RCuLatticeGreen(std::complex<double> z, double tpd, double tpp, double ep, RCuMatrix const& selfEnergy) : z_(z), g0RInv_(tpd, tpp, ep), selfEnergy_(selfEnergy) {};
+	RCuLatticeGreen(std::complex<double> z, double tpd, double tpp, double tppp, double ep, RCuMatrix const& selfEnergy) : z_(z), g0RInv_(tpd, tpp, tppp, ep), selfEnergy_(selfEnergy) {};
 	RCuMatrix const& operator()(double kx, double ky) {
 		temp_ = g0RInv_(z_, kx, ky);
 		temp_ -= selfEnergy_;
@@ -145,7 +147,7 @@ private:
 };
 
 struct RCuOLatticeGreen {
-	RCuOLatticeGreen(std::complex<double> z, double tpd, double tpp, double ep, RCuMatrix const& selfEnergy) : z_(z), g0RCuOInv_(tpd, tpp, ep), selfEnergy_(selfEnergy) {};
+	RCuOLatticeGreen(std::complex<double> z, double tpd, double tpp, double tppp, double ep, RCuMatrix const& selfEnergy) : z_(z), g0RCuOInv_(tpd, tpp, tppp, ep), selfEnergy_(selfEnergy) {};
 	RCuOMatrix const& operator()(double kx, double ky) {
 		temp_ = g0RCuOInv_(z_, kx, ky);
 		
@@ -172,7 +174,7 @@ typedef Fl::FlavorMatrix<16, RONames, RONames> ROMatrix;
 
 
 struct RCuOLatticeHoppingMatrix {
-	RCuOLatticeHoppingMatrix(double tpd, double tpp, double ep) : tpd_(tpd), tpp_(tpp), ep_(ep) {}; 
+	RCuOLatticeHoppingMatrix(double tpd, double tpp, double tppp, double ep) : tpd_(tpd), tpp_(tpp), tppp_(tppp), ep_(ep) {}; 
 	
 	RCuOMatrix const& operator()(double kx, double ky) {
 		result_ = .0;
@@ -188,6 +190,7 @@ struct RCuOLatticeHoppingMatrix {
 private:
 	double const tpd_;
 	double const tpp_;
+	double const tppp_;
 	double const ep_;
 	
 	RCuOMatrix result_;
@@ -205,12 +208,12 @@ private:
 		std::complex<double> exp_mky = std::conj(exp_ky);
 		
 		                                 tk_(0, 1) = tpd_*(1. - exp_mkx);                tk_(0, 2) = tpd_*(1. - exp_mky);
-		tk_(1, 0) = tpd_*(1. - exp_kx);  tk_(1, 1) = ep_ + 2.*tpp_*(coskx - 1.);         tk_(1, 2) = tpp_*(1. - exp_kx)*(1. - exp_mky);
-		tk_(2, 0) = tpd_*(1. - exp_ky);  tk_(2, 1) = tpp_*(1. - exp_mkx)*(1. - exp_ky);  tk_(2, 2) = ep_ + 2.*tpp_*(cosky - 1.);
+		tk_(1, 0) = tpd_*(1. - exp_kx);  tk_(1, 1) = ep_ + 2.*tppp_*(coskx - 1.);    tk_(1, 2) = tpp_*(1. - exp_kx)*(1. - exp_mky);
+		tk_(2, 0) = tpd_*(1. - exp_ky);  tk_(2, 1) = tpp_*(1. - exp_mkx)*(1. - exp_ky);  tk_(2, 2) = ep_ + 2.*tppp_*(cosky - 1.);
 		
 		                                   tmk_(0, 1) = tpd_*(1. - exp_kx);                 tmk_(0, 2) = tpd_*(1. - exp_ky);
-		tmk_(1, 0) = tpd_*(1. - exp_mkx);  tmk_(1, 1) = ep_ + 2.*tpp_*(coskx - 1.);         tmk_(1, 2) = tpp_*(1. - exp_mkx)*(1. - exp_ky);
-		tmk_(2, 0) = tpd_*(1. - exp_mky);  tmk_(2, 1) = tpp_*(1. - exp_kx)*(1. - exp_mky);  tmk_(2, 2) = ep_ + 2.*tpp_*(cosky - 1.);
+		tmk_(1, 0) = tpd_*(1. - exp_mkx);  tmk_(1, 1) = ep_ + 2.*tppp_*(coskx - 1.);    tmk_(1, 2) = tpp_*(1. - exp_mkx)*(1. - exp_ky);
+		tmk_(2, 0) = tpd_*(1. - exp_mky);  tmk_(2, 1) = tpp_*(1. - exp_kx)*(1. - exp_mky);  tmk_(2, 2) = ep_ + 2.*tppp_*(cosky - 1.);
 		
 		std::complex<double> v[] = {1., exp_kx, exp_kx*exp_ky, exp_ky};
 		
@@ -228,7 +231,7 @@ private:
 };
 
 struct RCuOLatticeKineticEnergy {
-	RCuOLatticeKineticEnergy(std::complex<double> z, double tpd, double tpp, double ep, RCuMatrix const& selfEnergy) : latticeGreenRCuO_(z, tpd, tpp, ep, selfEnergy), latticeHoppingMatrixRCuO_(tpd, tpp, ep) {};
+	RCuOLatticeKineticEnergy(std::complex<double> z, double tpd, double tpp, double tppp, double ep, RCuMatrix const& selfEnergy) : latticeGreenRCuO_(z, tpd, tpp, tppp, ep, selfEnergy), latticeHoppingMatrixRCuO_(tpd, tpp, tppp, ep) {};
 	
 	RCuOMatrix const& operator()(double kx, double ky) {
         result_ = latticeHoppingMatrixRCuO_(kx, ky)*latticeGreenRCuO_(kx, ky);

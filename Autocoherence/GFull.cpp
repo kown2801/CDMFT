@@ -26,10 +26,18 @@ int main(int argc, char** argv)
 		double const beta = readParams("beta")->getDouble();
 		double const tpd = readParams("tpd")->getDouble();
 		double const tpp = readParams("tpp")->getDouble();
+		double tppp = tpp;
+		//We want to read tppp if it is defined in the parameter file
+		bool existstppp;
+		const newIO::GenericReader* tpppRead = readParams("tppp",existstppp);
+		if(tpppRead) {
+			tppp = tpppRead->getDouble();
+		}
+		//End of tppp read
 		double const ep = readParams("ep")->getDouble();
 		unsigned int const NMat = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
 		
-		double const A = ep - 2.*tpp - mu;
+		double const A = ep - 2.*tppp - mu;
 		double const B = 2.*tpd*tpd + 6.*tpp*tpp;		
 		double const D = std::sqrt(A*A + 4.*B);
 		
@@ -40,9 +48,9 @@ int main(int argc, char** argv)
 		double np = (xp*fermi(beta*xp) - xm*fermi(beta*xm))/D;
 		
 		//Per unit cell
-		double const EkinFM = 2*(ep - 2.*tpp);                                                               //px + py
-		double const EkinSM = 4.*tpd*tpd                                                                     //d 
-						    + 2.*((ep - 2.*tpp)*(ep - 2.*tpp) + 2.*tpd*tpd + 6.*tpp*tpp - mu*(ep - 2.*tpp)); //px + py
+		double const EkinFM = 2*(ep - 2.*tppp);                                                               			//px + py
+		double const EkinSM = 4.*tpd*tpd                                                                     				//d 
+						    + 2.*((ep - 2.*tppp)*(ep - 2.*tppp) + 2.*tpd*tpd + 6.*tpp*tpp - mu*(ep - 2.*tppp)); //px + py
 		
 		double ekin = EkinFM/2. - EkinSM*beta/4.;
 		
@@ -98,7 +106,7 @@ int main(int argc, char** argv)
 			selfEnergy("d_0Up", "d_3Down") = 
 			selfEnergy("d_0Down", "d_3Up") = (mphi - pphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			
-			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, ep, selfEnergy);			
+			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			RCuOMatrix green = integrator(latticeGreen, M_PI/2., M_PI/2.);
 			
 			pxgreenFile << iomega.imag() << " "  
@@ -153,7 +161,7 @@ int main(int argc, char** argv)
 			
 			np += 2./beta*(temp/8. - (xp/(iomega - xp) - xm/(iomega - xm))/D).real();
 			
-			RCuOLatticeKineticEnergy latticeKineticEnergyRCuO(iomega + mu, tpd, tpp, ep, selfEnergy);			
+			RCuOLatticeKineticEnergy latticeKineticEnergyRCuO(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			
 			ekin += 2./beta*(integrator(latticeKineticEnergyRCuO, M_PI/2., M_PI/2.).trace()/8. - EkinFM/iomega - EkinSM/(iomega*iomega)).real();			
 		}

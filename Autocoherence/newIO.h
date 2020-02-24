@@ -150,6 +150,26 @@ namespace newIO
 		double value_;
 	};
 
+	struct MeanErrorReader : public GenericReader{
+		MeanErrorReader(json_spirit::mValue const& jEntry,json_spirit::Value_type valueType): GenericReader(valueType),mean_(jEntry.get_obj().at("mean").get_real()), error_(jEntry.get_obj().at("error").get_real()) {}; 
+		double getMean() const {
+			return mean_;
+		};
+		double getError() const{
+			return error_;
+		};
+		void write(json_spirit::mObject& jHyb,std::string const& entryName) const
+		{
+			json_spirit::mObject jObject; 
+			jObject["mean"] = mean_;
+			jObject["error"] = error_;
+			jHyb[entryName] = jObject;
+		}
+	private:
+		double mean_;
+		double error_;
+	};
+
 	struct ArrayDoubleReader : public GenericReader{
 		ArrayDoubleReader(json_spirit::mValue const& jEntry,json_spirit::Value_type valueType): GenericReader(valueType){
 			json_spirit::mArray const& jArray = jEntry.get_array();
@@ -294,8 +314,10 @@ namespace newIO
 		struct GenericReader* operator()(std::string str,bool& found){ 
 			if(index_.find(str) == index_.end())
 			{
+				found = false;
 				return NULL;
 			}
+			found = true;
 			return hyb_[index_.at(str)];
 		};
 		void write(std::string fileName)
@@ -326,7 +348,9 @@ namespace newIO
 		void addSign(double sign)
 		{
 			for(std::map<std::string, std::size_t>::iterator it = index_.begin(); it != index_.end(); ++it) {
-				hyb_[it->second]->addSign(sign);
+				if(it->first.compare("Sign") != 0){
+					hyb_[it->second]->addSign(sign);
+				}
 			};
 		}
 		~GenericReadFunc() {
