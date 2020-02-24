@@ -101,7 +101,7 @@ namespace Ma {
 
 			if(urng_() < probFlip_) {
 				++updateFlipTot_;
-				urng_() < .5 ? flipSpin(site) : flipSite(site, static_cast<int>(urng_()*nSite_));
+				urng_() < .5 ? flipSpin(site) : flipSite(site, static_cast<int>(urng_()*(nSite_-1)));
 			} else {				
 				int const spin = static_cast<int>(urng_()*2);
 				++updateTot_[2*site + spin];
@@ -267,6 +267,10 @@ namespace Ma {
 		};
 		
 		void flipSite(int siteA, int siteB) {
+			//Don't allow the same site (siteB is in [0,nSite_-2])
+			if(siteA == siteB){
+				siteB = nSite_-1;
+			}
 			std::swap(trace_[siteA], trace_[siteB]);
 			if(!tryFlip()) std::swap(trace_[siteA], trace_[siteB]);
 		};
