@@ -44,13 +44,13 @@ private:
 		std::complex<double> exp_ky(cosky, std::sin(ky));
 		std::complex<double> exp_mky = std::conj(exp_ky);
 		
-		G0kFullInv_        = CuOMatrix::Diag(z);  G0kFullInv_(0, 1) -= tpd_*(1. - exp_mkx);                G0kFullInv_(0, 2) -= tpd_*(1. - exp_mky);
-		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
-		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  G0kFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
+		G0kFullInv_        = CuOMatrix::Diag(z);  G0kFullInv_(0, 1) -= tpd_*(1. - exp_mkx);              G0kFullInv_(0, 2) -= tpd_*(1. - exp_mky);
+		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ - 2*tpp + 2.*tppp_*coskx;     G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
+		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);G0kFullInv_(2, 2) -= ep_ - 2*tpp + 2.*tppp_*cosky;
 		
-		G0mkFullInv_        = CuOMatrix::Diag(z);   G0mkFullInv_(0, 1) -= tpd_*(1. - exp_kx);                 G0mkFullInv_(0, 2) -= tpd_*(1. - exp_ky);
-		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
-		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);  G0mkFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
+		G0mkFullInv_        = CuOMatrix::Diag(z);   G0mkFullInv_(0, 1) -= tpd_*(1. - exp_kx);          		G0mkFullInv_(0, 2) -= tpd_*(1. - exp_ky);
+		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ - 2*tpp + 2.*tppp_*coskx;    	G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
+		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);G0mkFullInv_(2, 2) -= ep_ - 2*tpp + 2.*tppp_*cosky;
 		
 		G0kFullInv_.inv(G0kFull_);
 		
@@ -105,13 +105,13 @@ private:
 		std::complex<double> exp_ky(cosky, std::sin(ky));
 		std::complex<double> exp_mky = std::conj(exp_ky);
 		
-		G0kFullInv_        = CuOMatrix::Diag(z);  G0kFullInv_(0, 1) -= tpd_*(1. - exp_mkx);                G0kFullInv_(0, 2) -= tpd_*(1. - exp_mky);
-		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
-		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  G0kFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
+		G0kFullInv_        = CuOMatrix::Diag(z);  G0kFullInv_(0, 1) -= tpd_*(1. - exp_mkx);             	G0kFullInv_(0, 2) -= tpd_*(1. - exp_mky);
+		G0kFullInv_(1, 0) -= tpd_*(1. - exp_kx);  G0kFullInv_(1, 1) -= ep_ - 2*tpp + 2.*tppp_*coskx;    	G0kFullInv_(1, 2) -= tpp_*(1. - exp_kx)*(1. - exp_mky);
+		G0kFullInv_(2, 0) -= tpd_*(1. - exp_ky);  G0kFullInv_(2, 1) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);  	G0kFullInv_(2, 2) -= ep_ - 2*tpp + 2.*tppp_*cosky;
 		
-		G0mkFullInv_        = CuOMatrix::Diag(z);   G0mkFullInv_(0, 1) -= tpd_*(1. - exp_kx);                 G0mkFullInv_(0, 2) -= tpd_*(1. - exp_ky);
-		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ + 2.*tppp_*(coskx - 1.);    G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
-		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);  G0mkFullInv_(2, 2) -= ep_ + 2.*tppp_*(cosky - 1.);
+		G0mkFullInv_        = CuOMatrix::Diag(z);   G0mkFullInv_(0, 1) -= tpd_*(1. - exp_kx);               G0mkFullInv_(0, 2) -= tpd_*(1. - exp_ky);
+		G0mkFullInv_(1, 0) -= tpd_*(1. - exp_mkx);  G0mkFullInv_(1, 1) -= ep_ - 2*tpp + 2.*tppp_*coskx;    	G0mkFullInv_(1, 2) -= tpp_*(1. - exp_mkx)*(1. - exp_ky);
+		G0mkFullInv_(2, 0) -= tpd_*(1. - exp_mky);  G0mkFullInv_(2, 1) -= tpp_*(1. - exp_kx)*(1. - exp_mky);G0mkFullInv_(2, 2) -= ep_ - 2*tpp + 2.*tppp_*cosky;
 		
 		std::complex<double> v[] = {1., exp_kx, exp_kx*exp_ky, exp_ky};
 		
@@ -207,13 +207,13 @@ private:
 		std::complex<double> exp_ky(cosky, std::sin(ky));
 		std::complex<double> exp_mky = std::conj(exp_ky);
 		
-		                                 tk_(0, 1) = tpd_*(1. - exp_mkx);                tk_(0, 2) = tpd_*(1. - exp_mky);
-		tk_(1, 0) = tpd_*(1. - exp_kx);  tk_(1, 1) = ep_ + 2.*tppp_*(coskx - 1.);    tk_(1, 2) = tpp_*(1. - exp_kx)*(1. - exp_mky);
-		tk_(2, 0) = tpd_*(1. - exp_ky);  tk_(2, 1) = tpp_*(1. - exp_mkx)*(1. - exp_ky);  tk_(2, 2) = ep_ + 2.*tppp_*(cosky - 1.);
+		                                 tk_(0, 1) = tpd_*(1. - exp_mkx);               tk_(0, 2) = tpd_*(1. - exp_mky);
+		tk_(1, 0) = tpd_*(1. - exp_kx);  tk_(1, 1) = ep_ - 2*tpp + 2.*tppp_*coskx;    	tk_(1, 2) = tpp_*(1. - exp_kx)*(1. - exp_mky);
+		tk_(2, 0) = tpd_*(1. - exp_ky);  tk_(2, 1) = tpp_*(1. - exp_mkx)*(1. - exp_ky); tk_(2, 2) = ep_ - 2*tpp + 2.*tppp_*cosky;
 		
 		                                   tmk_(0, 1) = tpd_*(1. - exp_kx);                 tmk_(0, 2) = tpd_*(1. - exp_ky);
-		tmk_(1, 0) = tpd_*(1. - exp_mkx);  tmk_(1, 1) = ep_ + 2.*tppp_*(coskx - 1.);    tmk_(1, 2) = tpp_*(1. - exp_mkx)*(1. - exp_ky);
-		tmk_(2, 0) = tpd_*(1. - exp_mky);  tmk_(2, 1) = tpp_*(1. - exp_kx)*(1. - exp_mky);  tmk_(2, 2) = ep_ + 2.*tppp_*(cosky - 1.);
+		tmk_(1, 0) = tpd_*(1. - exp_mkx);  tmk_(1, 1) = ep_ - 2*tpp + 2.*tppp_*coskx;    	tmk_(1, 2) = tpp_*(1. - exp_mkx)*(1. - exp_ky);
+		tmk_(2, 0) = tpd_*(1. - exp_mky);  tmk_(2, 1) = tpp_*(1. - exp_kx)*(1. - exp_mky);  tmk_(2, 2) = ep_ - 2*tpp + 2.*tppp_*cosky;
 		
 		std::complex<double> v[] = {1., exp_kx, exp_kx*exp_ky, exp_ky};
 		

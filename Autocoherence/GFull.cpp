@@ -37,8 +37,8 @@ int main(int argc, char** argv)
 		double const ep = readParams("ep")->getDouble();
 		unsigned int const NMat = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
 		
-		double const A = ep - 2.*tppp - mu;
-		double const B = 2.*tpd*tpd + 6.*tpp*tpp;		
+		double const A = ep - 2.*tpp - mu;
+		double const B = 2.*tpd*tpd + 4.*tpp*tpp + 2.*tppp*tppp;		
 		double const D = std::sqrt(A*A + 4.*B);
 		
 		double const xp = (A + D)/2.;
@@ -48,9 +48,9 @@ int main(int argc, char** argv)
 		double np = (xp*fermi(beta*xp) - xm*fermi(beta*xm))/D;
 		
 		//Per unit cell
-		double const EkinFM = 2*(ep - 2.*tppp);                                                               			//px + py
+		double const EkinFM = 2*(ep - 2.*tpp);                                                               			//px + py
 		double const EkinSM = 4.*tpd*tpd                                                                     				//d 
-						    + 2.*((ep - 2.*tppp)*(ep - 2.*tppp) + 2.*tpd*tpd + 6.*tpp*tpp - mu*(ep - 2.*tppp)); //px + py
+						    + 2.*((ep - 2.*tpp)*(ep - 2.*tpp) + 2.*tpd*tpd + 4.*tpp*tpp + 2.*tppp*tppp - mu*(ep - 2.*tpp)); //px + py
 		
 		double ekin = EkinFM/2. - EkinSM*beta/4.;
 		
