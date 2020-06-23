@@ -1,0 +1,26 @@
+Restauration de l'environnement par défaut
+Restauration de l'environnement par défaut
+
+Les modules suivants ont été rechargés avec un changement de version :
+  1) gcccore/.7.3.0 => gcccore/.5.4.0     2) openmpi/3.1.2 => openmpi/2.1.1
+
+
+Les modules suivants ont été rechargés avec un changement de version :
+  1) gcccore/.7.3.0 => gcccore/.5.4.0     2) openmpi/3.1.2 => openmpi/2.1.1
+
+
+Lmod a automatiquement remplacé "intel/2016.4" par "gcc/7.3.0"
+
+
+Lmod a automatiquement remplacé "intel/2016.4" par "gcc/7.3.0"
+
+
+Les modules suivants ont été rechargés avec un changement de version :
+
+Les modules suivants ont été rechargés avec un changement de version :
+  1) gcccore/.5.4.0 => gcccore/.7.3.0     2) openmpi/2.1.1 => openmpi/3.1.2  1) gcccore/.5.4.0 => gcccore/.7.3.0     2) openmpi/2.1.1 => openmpi/3.1.2
+
+
+
+/var/spool/slurmd/job44505607/slurm_script: ligne14: Autocoherence/GFULL: Aucun fichier ou dossier de ce type
+/var/spool/slurmd/job44505619/slurm_script: ligne14: Autocoherence/GFULL: Aucun fichier ou dossier de ce type

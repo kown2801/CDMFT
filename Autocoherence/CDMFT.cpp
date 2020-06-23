@@ -33,10 +33,16 @@ int main(int argc, char** argv)
 		std::string dataFolder = argv[3];
 		std::string name = argv[4];
 		int const iteration = std::atoi(argv[5]);
-
-
-		newIO::GenericReadFunc readParams(inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json","Parameters");
-
+		std::string filename = "";
+		std::string nodeName = "";
+		if(iteration){
+			filename = inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json";
+			nodeName = "Parameters";
+		}else{
+			filename = inputFolder + name + "0.json";
+		}
+		
+		newIO::GenericReadFunc readParams(filename,nodeName);
 		double const mu = readParams("mu")->getDouble();
 		double const beta = readParams("beta")->getDouble();
 		double const tpd = readParams("tpd")->getDouble();
@@ -289,7 +295,7 @@ int main(int argc, char** argv)
 			}
 			
 			selfFile.close();
-			/**/
+			*/
 			
 			unsigned int const NSelf = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
 			

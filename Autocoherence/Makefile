@@ -15,8 +15,4 @@ CDMFT: CDMFT.cpp $(FILES)
 GFULL: GFull.cpp $(FILES)
 	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ GFull.cpp $(LDFLAGS) $(LIBS)
 
-
-
 clean: rm CDMFT GFULL
-
-
