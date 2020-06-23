@@ -98,7 +98,7 @@ namespace mpi {
 	struct ofstream : public std::ostringstream {
 		explicit ofstream(std::string filename, std::ios_base::openmode mode = ios_base::out) : std::ostringstream(mode), filename_(filename), mode_(mode) {
 		};
-		~ofstream() noexcept(false){
+		~ofstream() {
 			if(rank() == master) {
 			    std::ofstream file(filename_.c_str(), mode_);
 				if(!file)
