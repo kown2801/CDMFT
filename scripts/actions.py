@@ -22,7 +22,19 @@ class MyParser(argparse.ArgumentParser):
 
 #Beginning function to handle uncomputed occupations
 def find_missing_occupation(input_dir,data_dir):
-	lst = np.sort(np.loadtxt(os.path.join(data_dir,"ekin.dat"))[:,0].astype(int))
+	try:
+		#We want to get all the iterations for which the occupation was already computed
+		lst = np.sort(np.loadtxt(os.path.join(data_dir,"ekin.dat"))[:,0].astype(int))
+	except Exception as e:
+		#If that doesn't work, it means either we have no pn file of too few data (only one line)
+		print("First problem : " + str(e))
+		try:
+			#Trying to see if there is at least a line in the file
+			lst = [1,np.loadtxt(os.path.join(data_dir,"ekin.dat"))[0]]
+		except Exception as e:
+			#If not then just do the first iteration
+			print("Second problem : " + str(e))
+			return 1
 	should_be = np.sort(np.loadtxt(os.path.join(data_dir,"N.dat"))[:,0].astype(int))
 	for i in should_be:
 		if i not in lst:
@@ -38,8 +50,9 @@ def all_occupations_in_folder(files_dir):
 	all_data_dir = os.path.join(files_dir,"../")
 	index = find_missing_occupation(input_dir,data_dir)
 	if index != None:
-		run(["Autocoherence/run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
-		run(["sbatch","Analysis_code/actions.sh","-a","occupations","-f",os.path.basename(os.path.normpath(files_dir))])
+		os.chdir("scripts")
+		run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
+		run(["sbatch","actions.sh","-a","occupations","-f",os.path.basename(os.path.normpath(files_dir))])
 	else:
 		for file in single_occupation_files:
 			data = np.loadtxt(os.path.join(data_dir,file))
@@ -55,13 +68,16 @@ def order_and_remove_occupation(files_dir):
 	output_dir = os.path.join(files_dir,"OUT/")
 	data_dir = os.path.join(files_dir,"DATA/")
 	all_data_dir = os.path.join(files_dir,"../")
-	for file in single_filenames:
-		data = np.loadtxt(os.path.join(data_dir,file))
-		treated = data[np.unique(data[:,0],return_index = True)[1],:]
-		try:
-			np.savetxt(os.path.join(data_dir,file),treated,fmt="%i %f")
-		except:
-			np.savetxt(os.path.join(data_dir,file),treated,fmt="%i %f %f %f %f")
+	try:
+		for file in single_filenames:
+			data = np.loadtxt(os.path.join(data_dir,file))
+			treated = data[np.unique(data[:,0],return_index = True)[1],:]
+			try:
+				np.savetxt(os.path.join(data_dir,file),treated,fmt="%i %f")
+			except:
+				np.savetxt(os.path.join(data_dir,file),treated,fmt="%i %f %f %f %f")
+	except:
+		pass
 	return 0
 def handle_occupation(files_dir):
 	order_and_remove_occupation(files_dir)
