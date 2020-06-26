@@ -4,11 +4,12 @@ For license and use please advise him.
 If you have trouble following the steps you can always contact me (nicolas.kowalski.2016@polytechnique.org) 
 
 %========= INSTALLATION ==========%
-
-
-
-
-
+In order to be able to install this program, you need to first follow the steps of teh README.md file in the main directory
+When this is all done and properly installed, come back in this directory and type the two commands : 
+$ . export.sh
+$ make
+There will maybe be a warning message about destructors. Just ignore it.
+That's it you are set up to use this impurity solver.
 
 %========= USAGE ==========%
 Always use the command : 

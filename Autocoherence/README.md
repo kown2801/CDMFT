@@ -4,11 +4,11 @@ For license and use please advise him.
 If you have trouble following the steps detailled here you can always contact me (nicolas.kowalski.2016@polytechnique.org) 
 
 %========= INSTALLATION ==========%
-
-
-
-
-
+In order to be able to install this program, you need to first follow the steps of the README.md file in the main directory
+When this is all done and properly installed, come back in this directory and type the two commands : 
+$ . export.sh
+$ make
+That's it you are set up to use the self-consistency and full Green's function programs
 
 %========= USAGE ==========%
 Always use the command : 
