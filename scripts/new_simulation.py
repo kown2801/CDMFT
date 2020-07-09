@@ -22,15 +22,15 @@ def find_available_data_dir_name(basename):
 		i+=1
 	return current_name
 
-def generate_simulation(ep,beta,mu,U,tpd,tppp,MEASUREMENT_TIME,Computing_days,iterations):
+def generate_simulation(all_args):
 	this_directory_from_file_dir = "../../scripts"
 	os.chdir(os.path.dirname(os.path.realpath(__file__))) #The working directory is now the root of the repository
 	#Create the name of the folder to host this new simulation
-	data_dir_name = "ep" + str(ep) + "_beta" + str(beta) + "_mu" + str(mu) + "_U" + str(U)
-	if tpd != None:
-		data_dir_name += "_tpd" + str(tpd)
-	if tppp != None:
-		data_dir_name += "_tppp" + str(tppp)
+	data_dir_name = "ep" + all_args["ep"] + "_beta" + all_args["beta"] + "_mu" + all_args["mu"] + "_U" + all_args["U"]
+	if "tpd" in all_args:
+		data_dir_name += "_tpd" + all_args["tpd"]
+	if "tppp" in all_args:
+		data_dir_name += "_tppp" + all_args["tppp"]
 
 	backup_path = "./BACKUP_START"
 	path_to_main_dir = "../"
@@ -55,11 +55,13 @@ def generate_simulation(ep,beta,mu,U,tpd,tppp,MEASUREMENT_TIME,Computing_days,it
 	sh_origin.close()
 	sh_destination = open(os.path.join(files_path,"run.sh"),"w")
 	sh_destination.write('#!/bin/bash\n')
-	sh_destination.write("#SBATCH --time=" + Computing_days + "-00:00:00\n")
-	sh_destination.write('#SBATCH --job-name="' + str(ep) + str(beta) + str(mu) + '"\n')
+	sh_destination.write("#SBATCH --time=" + all_args["computing_time"] + "-00:00:00\n")
+	del all_args["computing_time"]
+	sh_destination.write('#SBATCH --job-name="' + all_args["ep"] + all_args["U"] + all_args["mu"] + '"\n')
 	for l in lines:
 		sh_destination.write(l)
-	sh_destination.write(os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(iterations) + " 1")
+	sh_destination.write(os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(all_args["iterations"]) + " 1")
+	del all_args["iterations"]
 	sh_destination.close()
 	#End creation run.sh
 
@@ -68,15 +70,10 @@ def generate_simulation(ep,beta,mu,U,tpd,tppp,MEASUREMENT_TIME,Computing_days,it
 	params_json = json.loads(f.read())
 	f.close()
 	params_json = params_json["Parameters"]
-	params_json["U"] = U
-	params_json["ep"] = ep
-	params_json["beta"] = beta
-	params_json["mu"] = mu
-	if tpd != None:
-		params_json["tpd"] = tpd
-	if tppp != None:
-		params_json["tppp"] = tppp
-	params_json["MEASUREMENT_TIME"] = MEASUREMENT_TIME
+	for i in all_args:
+		if i not in params_json:
+			raise Exception(i + " can't be included in the params file if it is not declared in the one in scripts/BACKUP_START")
+		params_json[i] = type(params_json[i])(all_args[i])
 	params_json["HYB"] = "Hyb1.json"
 	f = open(os.path.join(files_path,"IN/params1.json"),"w")
 	shutil.copy(os.path.join(backup_path,"LinkA.json"),os.path.join(files_path,"IN/LinkA.json"))
@@ -92,19 +89,13 @@ def generate_simulation(ep,beta,mu,U,tpd,tppp,MEASUREMENT_TIME,Computing_days,it
 
 
 if __name__ == "__main__":
-	if(len(sys.argv) >= 9):
-		ep = float(sys.argv[1])
-		beta = float(sys.argv[2])
-		mu = float(sys.argv[3])
-		U = float(sys.argv[4])
-		MEASUREMENT_TIME = int(sys.argv[5])
-		Computing_days = sys.argv[6]
-		iterations = int(sys.argv[7])
-		tpd = tppp = None
-		if(len(sys.argv) >= 10):
-			tpd = float(sys.argv[9])
-		if(len(sys.argv) >= 11):
-			tppp = float(sys.argv[10])
-		generate_simulation(ep,beta,mu,U,tpd,tppp,MEASUREMENT_TIME,Computing_days,iterations)
+	all_args = dict()
+	i = 1
+	while len(sys.argv) > i+1:
+		all_args[sys.argv[i]] = sys.argv[i+1]
+		i+=2
+	print(all_args)
+	if "ep" in all_args and "beta" in all_args and "mu" in all_args and "U" in all_args and "computing_time" in all_args and "iterations" in all_args:
+		generate_simulation(all_args)
 	else:
-		print("Usage : new_simulation.py ep beta mu U MEASUREMENT_TIME Computing_days iterations [tpd tppp]")
+		print("Usage : new_simulation.py parameter_name1 parameter_value1 parameter_name2 parameter_value2 ...\n At least ep, beta, mu, U, computing_time and iterations are required")

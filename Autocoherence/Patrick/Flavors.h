@@ -114,6 +114,21 @@ namespace Fl {
 		template<class T> FlavorMatrix& operator=(T const& t) { t.equ(*this); return *this;};
 		template<class T> FlavorMatrix& operator-=(T const& t) { t.mequ(*this); return *this;};
 		template<class T> FlavorMatrix& operator+=(T const& t) { t.pequ(*this); return *this;};
+		FlavorMatrix operator+(FlavorMatrix const& matrix) {
+			FlavorMatrix ret = *this;
+		 	matrix.pequ(ret);
+		 	return ret;
+		};
+		FlavorMatrix operator-(FlavorMatrix const& matrix) {
+			FlavorMatrix ret = *this;
+		 	matrix.mequ(ret);
+		 	return ret;
+		};
+		FlavorMatrix operator/(std::complex<double> divisor) {
+			FlavorMatrix ret = *this;
+		 	ret/=divisor;
+		 	return ret;
+		};
 		
 		FlavorMatrix& inv() {
 			FlavorMatrix temp = *this; *this = Diag(1.);

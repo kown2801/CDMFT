@@ -8,7 +8,7 @@ import re
 import glob
 
 def get_float(text):
-	return re.findall("\d+\.\d+", text)[0]
+	return re.findall("\d*\.\d+|\d+", text)[0]
 
 def resume_simulation(data_dir_name,iteration_min,iteration_max,Computing_days):
 	#data_dir_name is here the name of the folder we want to resume (example ep9.0_beta60.0_mu12.41_U12.0_tpd1.4_tppp1.0)

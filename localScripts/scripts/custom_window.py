@@ -17,6 +17,9 @@ scripts_folder = CONSTS.distant_scripts_dir
 
 def print_and_mean(data,ax,mean_over):
     n = len(data)
+    if mean_over > n:
+        print("Not enough data to mean over but proceeding anyway with a lower data count")
+        mean_over = n
     X = np.linspace(mean_over,n-1,n-mean_over)
     panda_data = pandas.DataFrame(data=data)
     ax.plot(data,label="Raw Data")

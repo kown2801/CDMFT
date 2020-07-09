@@ -86,6 +86,48 @@ ${HOME} ==>	local ==>	lib 	==> libopenblas.a
 You can either use the programs using what is written in the Autocoherence/README.md and ImpuritySolver/README.md files or use the python library that I wrote in order to launch simulations. 
 We will describe here the second part. 
 All the scripts I write about here are located in the localScripts folder at the root of the repository. In order to use those, copy the content of this directory on your personal - or work - computer. Please make sure to copy all the content of the directory because the structure of the code is important for it to work.
+Then you will need to create a ssh key in order to connect to the ComputeCanada computers. It is fairly easy don't worry.
+First on your local compute use the command : 
+$ ssh-keygen -b 4096 -t rsa
+These lines should appear : 
+
+	Generating public/private rsa key pair.
+	Enter file in which to save the key (/home/username/.ssh/id_rsa):
+
+Press enter if it is ok. Then :
+
+	Enter passphrase (empty for no passphrase):
+
+You can use a password to protect you connection if you wish : 
+
+	Enter same passphrase again:
+
+Finally : 
+
+	Your identification has been saved in /home/username/.ssh/id_rsa.
+	Your public key has been saved in /home/username/.ssh/id_rsa.pub.
+	The key fingerprint is:
+	ef:87:b5:b1:4d:7e:69:95:3f:62:f5:0d:c0:7b:f1:5e username@hostname
+	The key's randomart image is:
+	+--[ RSA 2048]----+
+	|                 |
+	|                 |
+	|           .     |
+	|            o .  |
+	|        S    o o.|
+	|         .  + +oE|
+	|          .o O.oB|
+	|         .. +oo+*|
+	|          ... o..|
+	+-----------------+
+
+There you created a pair of rsa keys. 
+The final step is to copy the public key on the compute canada computer. To do so create a .ssh directory in your home and a authorized_keys file in thid directory
+
+	$ mkdir ~/.ssh
+	$ touch ~/.ssh/authorized_keys
+
+Then you need to copy the content of the id_rsa.pub local file that you just created using the ssh-keygen command inside this authorized_keys file (it is one line). You should be able to connect to your supercomputer space without a password now. If not so, please check https://docs.computecanada.ca/wiki/Using_SSH_keys_in_Linux for help. This step is mandatory in order to be able to connect from the jupyter notebooks.
 
 You have multiple files in  order to do multiple things.
 Before doing anything, please read those lines and follows those simple steps

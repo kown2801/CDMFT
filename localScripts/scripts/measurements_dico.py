@@ -151,7 +151,7 @@ class Measurements_Dico:
 #This allows to load the observable_name.dat files located in the dataFolder 
 #and take the average over the last converged_from points
 def get_single_dat(dataFolder,observable_name):
-    obs_data = np.loadtxt(os.path.join(dataFolder,observable_name + ".dat"))[:,1]  
+    obs_data = np.loadtxt(os.path.join(dataFolder,observable_name + ".dat"))[:,1:]  
     return obs_data
 
 #This function is used to retrieve the quantities from a single directory "dataFolder/../". 
@@ -165,7 +165,7 @@ def get_data_from_dict(dataFolder,parameters,measurement_list,converged_from,err
     measurement_list_local = deepcopy(measurement_list)
     for observable_name in measurement_list_local["Normal"]:
         try:
-            measurement_results[observable_name] = get_single_dat(dataFolder,observable_name)
+            measurement_results[observable_name] = get_single_dat(dataFolder,observable_name).squeeze()
         except Exception as e:#There is an error reading the observable, maybe it is because we have to compute it from other 
             if observable_name in accepted_functions:
                 for i in accepted_functions[observable_name]["observables"]["Matsubara"]:
@@ -175,6 +175,7 @@ def get_data_from_dict(dataFolder,parameters,measurement_list,converged_from,err
                         raise Exception("You need to include " + i + " in the normal observables in order to compute " + observable_name)
                 compute_when_all_loaded.append(observable_name)
             elif observable_name=="stiffness":
+                print("No stiffness yet for " + dataFolder)
                 if errors:
                     measurement_results[observable_name] = [-1,0]*converged_from
                 else:
@@ -207,7 +208,7 @@ def get_data_from_dict(dataFolder,parameters,measurement_list,converged_from,err
             accepted_functions[observable_name]["compute"](dataFolder,*args)
         except Exception as e:
             raise Exception(str(e) + " in trying to compute " + observable_name + " from " + str(accepted_functions[observable_name]["observables"]) + ". I guess that the computed data don't have the right shapes.")
-        measurement_results[observable_name] = get_single_dat(dataFolder,observable_name)
+        measurement_results[observable_name] = get_single_dat(dataFolder,observable_name).squeeze()
     #After loading all the useful measurements, we compute the mean and the error if needed
     for k, v in measurement_results.items():
         v_mean = np.mean(v[-converged_from:],axis=0)

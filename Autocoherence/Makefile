@@ -7,7 +7,7 @@ LIBS += -ljson_spirit -lopenblas -lpthread
 FILES =  Patrick/Integrators.h  Patrick/Plaquette/Plaquette.h Patrick/Utilities.h 
 FILES+= Patrick/Flavors.h Patrick/Hyb.h Patrick/IO.h newIO.h
 
-all: CDMFT GFULL
+all: CDMFT GFULL STIFFNESS
 
 CDMFT: CDMFT.cpp $(FILES)
 	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ CDMFT.cpp $(LDFLAGS) $(LIBS)
@@ -15,4 +15,8 @@ CDMFT: CDMFT.cpp $(FILES)
 GFULL: GFull.cpp $(FILES)
 	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ GFull.cpp $(LDFLAGS) $(LIBS)
 
-clean: rm CDMFT GFULL
+STIFFNESS: STIFFNESS.cpp $(FILES)
+	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ STIFFNESS.cpp $(LDFLAGS) $(LIBS)
+
+clean: 
+	rm CDMFT GFULL STIFFNESS
