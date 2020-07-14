@@ -31,9 +31,6 @@ Then you have to locate the file called something like
 and move it to the "lib" directory. Then rename it **libopenblas.a**.
 So you should have a file at ${HOME}/local/lib called libopenblas.a (where ${HOME} is your home directory).
 
-Then you have to copy the "cblas.h", "f77blas.h", "lapacke_mangling.h", "openblas_config.h" files into a "openblas" folder in the include folder.
-Those files are located at the root of the OpenBlas folder.
-
 II. Installing Json_spirit
 
 Again in the local folder, type :
@@ -69,24 +66,20 @@ by
 	#define JSON_SPIRIT_MVALUE_ENABLED
 
 The installation part is finished. Now you still need to make the program. In order to do that, go to the Readme files inside the two folders (ImpuritySolver, Autocoherence). Don't forget to do this much as you wouldn't be able to run the program without it.
+This is the minimal structure of your ${HOME}/local folder you need.
 
-	${HOME}/local ==>	lib 	==> libopenblas.a
-								==>	libjson_spirit.so
-						include ==> json_spirit ==>json_spirit.h
-												==>json_spirit_error_position.h
-												==>json_spirit_reader.h
-												==>json_spirit_reader_template.h
-												==>json_spirit_stream_reader.h
-												==>json_spirit_utils.h
-												==>json_spirit_value.h
-												==>json_spirit_writer.h
-												==>json_spirit_writer_options.h
-												==>json_spirit_writer_template.h
-								==> openblas 	==>	cblas.h
-												==> f77blas.h 
-												==> lapacke_mangling.h
-												==> openblas_config.h
-
+${HOME}/local ==>	lib 	==> libopenblas.a
+							==>	libjson_spirit.so
+					include ==> json_spirit ==>json_spirit.h
+											==>json_spirit_error_position.h
+											==>json_spirit_reader.h
+											==>json_spirit_reader_template.h
+											==>json_spirit_stream_reader.h
+											==>json_spirit_utils.h
+											==>json_spirit_value.h
+											==>json_spirit_writer.h
+											==>json_spirit_writer_options.h
+											==>json_spirit_writer_template.h
 %========= USAGE ==========%
 
 You can either use the programs using what is written in the Autocoherence/README.md and ImpuritySolver/README.md files or use the python library that I wrote in order to launch simulations. 
