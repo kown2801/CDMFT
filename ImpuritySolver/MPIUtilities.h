@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <json_spirit.h>
+#include <valarray>
 
 namespace mpi {		
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -72,7 +73,42 @@ namespace mpi {
 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	};
+	void reduce(std::valarray<double> &toTransmit,std::valarray<double> &toReceive){
+#ifdef HAVE_MPI
+			MPI_Reduce(&toTransmit[0], mpi::rank() == mpi::master ? &toReceive[0] : 0, toTransmit.size(), MPI_DOUBLE, MPI_SUM, mpi::master, MPI_COMM_WORLD);	
+#else
+			toReceive = toTransmit;
+#endif
+	}
+	void reduce(boost::uint64_t &toTransmit,boost::uint64_t &toReceive){
+#ifdef HAVE_MPI
+			MPI_Reduce(&toTransmit, mpi::rank() == mpi::master ? &toReceive : 0, 1, MPI_DOUBLE, MPI_SUM, mpi::master, MPI_COMM_WORLD);	
+#else
+			toReceive = toTransmit;
+#endif
+	}
+	void allReduce(std::valarray<double> &toTransmit,std::valarray<double> &toReceive){
+#ifdef HAVE_MPI
+			MPI_Allreduce(&toTransmit[0], &toReceive[0], toTransmit.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);	
+#else
+			toReceive = toTransmit;
+#endif
+	}
+	void allReduce(boost::uint64_t &toTransmit,boost::uint64_t &toReceive){
+#ifdef HAVE_MPI
+			MPI_Allreduce(&toTransmit, &toReceive, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);	
+#else
+			toReceive = toTransmit;
+#endif
+	}
 
+	void getMax(boost::uint64_t &toTransmit,boost::uint64_t &toReceive){
+#ifdef HAVE_MPI
+			MPI_Allreduce(&toTransmit, &toReceive, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);	
+#else
+			toReceive = toTransmit;
+#endif
+	}
 
 
 	void read_json_all_processors(std::string name, json_spirit::mValue& temp) {

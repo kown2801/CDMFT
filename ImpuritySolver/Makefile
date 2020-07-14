@@ -11,3 +11,6 @@ all:     IS
 
 IS:  IS.C $(HEADERS_IS)
 	mpic++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ IS.C $(LDFLAGS) $(LIBS)	
+
+clean:
+	rm IS

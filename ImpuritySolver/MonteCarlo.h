@@ -57,22 +57,27 @@ namespace MC {
 		boost::int64_t const sample_every_sweep = jParams.at("SAMPLE_EVERY_SWEEP").get_int64();
 		boost::int64_t const store_every_sample = jParams.at("STORE_EVERY_SAMPLE").get_int64();
 		mpi::cout << "Start thermalization at " << std::ctime(&(time = std::time(NULL))) << std::flush; 
-		
+		mpi::cout = mpi::one;
+		mpi::cout << "We go for " << 60.*jParams.at("THERMALIZATION_TIME").get_real() << " seconds of MonteCarlo thermalization" << std::endl;
+		mpi::cout  = mpi::every;	
 		timer.start(60.*jParams.at("THERMALIZATION_TIME").get_real());
 		for(; 1; ) { 
 			++thermalization_sweeps;
-			
 			markovChain.doUpdate();
 			
-			if(thermalization_sweeps % clean_every_sweep == 0) 
+			if(thermalization_sweeps % clean_every_sweep == 0) {
 				markovChain.cleanUpdate();
+			}
 			
 			if(thermalization_sweeps % sample_every_sweep == 0)
+			{
 				if(timer.end()) break;
+			}
 		}
-		
 		mpi::cout << "Start measurements at " << std::ctime(&(time = std::time(NULL))) << std::flush;
-		
+		mpi::cout = mpi::one;
+		mpi::cout << "We go for " << 60.*jParams.at("MEASUREMENT_TIME").get_real() << " seconds of MonteCarlo simulation" << std::endl;
+		mpi::cout = mpi::every;
 		timer.start(60.*jParams.at("MEASUREMENT_TIME").get_real());
 		for(; 1; ) {
 			++measurement_sweeps;
@@ -85,17 +90,13 @@ namespace MC {
 			if(measurement_sweeps % sample_every_sweep == 0) {
 				markovChain.measure();
 				measurementsFromLastSample++;
-				
 				if(measurementsFromLastSample % store_every_sample == 0) {
 					markovChain.measure(simulation.meas(), store_every_sample);
 					if(timer.end()) break;					
 				}
 			}
 		}
-
-		mpi::cout = mpi::every;
 		mpi::cout << "Start saving simulation at " << std::ctime(&(time = std::time(NULL))) << std::flush;
-		
 		simulation.save(thermalization_sweeps, measurement_sweeps);
 	};
 };
