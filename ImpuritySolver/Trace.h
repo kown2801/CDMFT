@@ -17,7 +17,7 @@
 
 /////////////////////////////////////////////////////////////////
 //Scheiss Observables !!!!!!!
-// statistik für k auch individuell für \up und \down möglich
+// statistik f≈∏r k auch individuell f≈∏r \up und \down m≈°glich
 /////////////////////////////////////////////////////////////////
 
 namespace Tr {
@@ -76,6 +76,7 @@ namespace Tr {
 		double Sz;
 		double D;
 		std::valarray<double> Chi;
+		double Chiij;
 	};
 	
 	struct Trace {
@@ -235,7 +236,7 @@ namespace Tr {
 			std::swap(operators_[0], operators_[1]);
 		};
 		
-		void measure(int sign) {
+		void measure(int sign,double& Chiij) {
 			acc_.k += sign*((operators(0).size() + operators(1).size())/2.);
 			
 			if(operators(0).size() && operators(1).size()) {
@@ -243,6 +244,9 @@ namespace Tr {
 				acc_.D += sign*overlap_/beta_;
 				acc_.Sz += sign*.5*(lenght_[0] - lenght_[1])/beta_;
 				acc_.Chi[0] += sign*.25*(lenght_[0] - lenght_[1])*(lenght_[0] - lenght_[1])/beta_;
+
+				//We test to get the staggered spin susceptibility, we get the Chiij for each site and multiply them later.
+				Chiij = .5*(lenght_[0] - lenght_[1]);
 			} else if(operators(0).size()) {
 				double arg = mu_*beta_ - U_*lenght_[0];
 				double exp = std::exp(-std::abs(arg));
@@ -269,12 +273,11 @@ namespace Tr {
 			}
 			
 			if(acc_.Chi.size() > 1) {
-				if(!toChi_) {     //So wies aussieht haben wir hier glueck: keine fall unterschiedung für 0 expansions ordnung nötig fuer finites omega					
+				if(!toChi_) {     //So wies aussieht haben wir hier glueck: keine fall unterschiedung f≈∏r 0 expansions ordnung n≈°tig fuer finites omega					
 					toChi_ = new Ut::complex[acc_.Chi.size()];
 					
 					Operators::const_iterator it0 = operators(0).begin();
 					Operators::const_iterator it1 = operators(1).begin();
-					
 					while(it0 != operators(0).end() || it1 != operators(1).end()) {
 						double const time1 = it1 != operators(1).end() ? it1->time() : std::numeric_limits<double>::max();
 						

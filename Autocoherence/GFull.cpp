@@ -9,16 +9,28 @@ double fermi(double arg) {
 	return arg > .0 ? std::exp(-arg)/(1. + std::exp(-arg)) : 1./(1. + std::exp(arg));
 };
 
+void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
+	std::ifstream file(outputFolder + fileName); 
+	if(file) {
+		json_spirit::mValue temp;
+		json_spirit::read(file, temp); 
+		jLink = temp.get_array();
+	}else{
+		throw std::runtime_error(outputFolder + fileName + " not found.");
+	}
+}
+
 int main(int argc, char** argv)
 {
 	try {
-		if(argc != 5) 
-			throw std::runtime_error("Usage : GFULL inputFolder dataFolder filename iteration");
+		if(argc != 6) 
+			throw std::runtime_error("Usage : GFULL inputFolder outputFolder dataFolder filename iteration");
 		
 		std::string inputFolder = argv[1]; 
-		std::string dataFolder = argv[2];
-		std::string name = argv[3];
-		int const iteration = std::atoi(argv[4]);
+		std::string outputFolder = argv[2]; 
+		std::string dataFolder = argv[3];
+		std::string name = argv[4];
+		int const iteration = std::atoi(argv[5]);
 
 		newIO::GenericReadFunc readParams(inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json","Parameters");
 
@@ -65,46 +77,58 @@ int main(int argc, char** argv)
 		
 		Int::EulerMaclaurin2D<RCuOMatrix> integrator(1.e-4, 4, 12);
 		
+		//We read the Link file in order to know the structure of the self-energy and hybridation functions: 
+		json_spirit::mArray jLinkN;
+		readLinkFile(readParams("LINKN")->getString(),jLinkN,outputFolder);
+		json_spirit::mArray jLinkA;
+		readLinkFile(readParams("LINKA")->getString(),jLinkA,outputFolder);
+		//Now we create the map that will contain the components
+		std::map<std::string,std::complex<double> > component_map;
+		std::map<std::string,std::pair<int,int>> inverse_component_map;
+		for(int i=0;i<4;i++){
+			for(int j=0;j<4;j++){
+				component_map[jLinkN[i].get_array()[j].get_str()] = 0;
+				component_map[jLinkA[i].get_array()[j].get_str()] = 0;
+				inverse_component_map[jLinkN[i].get_array()[j].get_str()] = std::pair<int,int>(i,j);
+				inverse_component_map[jLinkA[i].get_array()[j].get_str()] = std::pair<int,int>(i+4,j);
+			}
+		}
+
+
+
+
 		for(std::size_t n = 0; n < NMat; ++n) {
 			
 			std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
-						
-			double s00_R, s00_I, s01_R, s01_I, s11_R, s11_I,pphi_R, pphi_I, mphi_R, mphi_I;;
-			selfFile >> dummy >> s00_R >> s00_I >> s01_R >> s01_I >> s11_R >> s11_I >> pphi_R >> pphi_I >> mphi_R >> mphi_I;
-			std::complex<double> s00(s00_R, s00_I);
-			std::complex<double> s01(s01_R, s01_I);
-			std::complex<double> s11(s11_R, s11_I);
-			std::complex<double> pphi(pphi_R, pphi_I);
-			std::complex<double> mphi(mphi_R, mphi_I);
-			
+
+			selfFile >> dummy;
+			for (auto &p : component_map)
+			{
+				double real,imag;
+				if(p.first != "empty"){ //We don't read the empty component
+					selfFile >> real >> imag;
+					p.second = std::complex<double>(real,imag);
+				}
+			} 
+
 			RCuMatrix selfEnergy;
-			selfEnergy("d_0Up", "d_0Up") = s00; selfEnergy("d_0Up", "d_1Up") = s01; selfEnergy("d_0Up", "d_2Up") = s11; selfEnergy("d_0Up", "d_3Up") = s01;
-			selfEnergy("d_1Up", "d_0Up") = s01; selfEnergy("d_1Up", "d_1Up") = s00; selfEnergy("d_1Up", "d_2Up") = s01; selfEnergy("d_1Up", "d_3Up") = s11;
-			selfEnergy("d_2Up", "d_0Up") = s11; selfEnergy("d_2Up", "d_1Up") = s01; selfEnergy("d_2Up", "d_2Up") = s00; selfEnergy("d_2Up", "d_3Up") = s01;
-			selfEnergy("d_3Up", "d_0Up") = s01; selfEnergy("d_3Up", "d_1Up") = s11; selfEnergy("d_3Up", "d_2Up") = s01; selfEnergy("d_3Up", "d_3Up") = s00;	
+			std::complex<double> anomal_factor = (component_map["pphi"] - component_map["mphi"])/2.;
+			for(int i=0;i<4;i++){
+				for(int j=0;j<4;j++){		
+					std::complex<double> this_normal_component = component_map[jLinkN[i].get_array()[j].get_str()];
+					selfEnergy(i,j) = this_normal_component;
+					selfEnergy(i+4,j+4) = -std::conj(this_normal_component);
+					
+					if(jLinkA[i].get_array()[j].get_str() == "mphi"){
+						selfEnergy(i+4,j) = -anomal_factor;
+						selfEnergy(i,j+4) = -anomal_factor;
+					}else if(jLinkA[i].get_array()[j].get_str() == "phhi"){
+						selfEnergy(i+4,j) = anomal_factor;
+						selfEnergy(i,j+4) = anomal_factor;
+					}
+				}
+			}
 			
-			selfEnergy("d_0Down", "d_0Down") = -std::conj(s00); selfEnergy("d_0Down", "d_1Down") = -std::conj(s01); selfEnergy("d_0Down", "d_2Down") = -std::conj(s11); selfEnergy("d_0Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_1Down", "d_0Down") = -std::conj(s01); selfEnergy("d_1Down", "d_1Down") = -std::conj(s00); selfEnergy("d_1Down", "d_2Down") = -std::conj(s01); selfEnergy("d_1Down", "d_3Down") = -std::conj(s11);
-			selfEnergy("d_2Down", "d_0Down") = -std::conj(s11); selfEnergy("d_2Down", "d_1Down") = -std::conj(s01); selfEnergy("d_2Down", "d_2Down") = -std::conj(s00); selfEnergy("d_2Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_3Down", "d_0Down") = -std::conj(s01); selfEnergy("d_3Down", "d_1Down") = -std::conj(s11); selfEnergy("d_3Down", "d_2Down") = -std::conj(s01); selfEnergy("d_3Down", "d_3Down") = -std::conj(s00);	
-			
-			selfEnergy("d_0Up", "d_1Down") = 
-			selfEnergy("d_0Down", "d_1Up") = 
-			selfEnergy("d_1Up", "d_0Down") = 
-			selfEnergy("d_1Down", "d_0Up") = 
-			selfEnergy("d_2Up", "d_3Down") = 
-			selfEnergy("d_2Down", "d_3Up") =
-			selfEnergy("d_3Up", "d_2Down") = 
-			selfEnergy("d_3Down", "d_2Up") = (pphi - mphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
-			selfEnergy("d_1Up", "d_2Down") = 
-			selfEnergy("d_1Down", "d_2Up") = 
-			selfEnergy("d_2Up", "d_1Down") = 
-			selfEnergy("d_2Down", "d_1Up") = 
-			selfEnergy("d_3Up", "d_0Down") = 
-			selfEnergy("d_3Down", "d_0Up") = 
-			selfEnergy("d_0Up", "d_3Down") = 
-			selfEnergy("d_0Down", "d_3Up") = (mphi - pphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			
 			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			RCuOMatrix green = integrator(latticeGreen, M_PI/2., M_PI/2.);
@@ -144,6 +168,9 @@ int main(int argc, char** argv)
 			          << green("d_0Up", "d_0Up").real() << " " << green("d_0Up", "d_0Up").imag() << " " 
 			          << green("d_0Up", "d_1Up").real() << " " << green("d_0Up", "d_1Up").imag() << " " 
 			          << green("d_0Up", "d_2Up").real() << " " << green("d_0Up", "d_2Up").imag() << " " 
+			          << green("d_1Up", "d_1Up").real() << " " << green("d_1Up", "d_1Up").imag() << " " 
+			          << green("d_1Up", "d_2Up").real() << " " << green("d_1Up", "d_2Up").imag() << " " 
+			          << green("d_1Up", "d_3Up").real() << " " << green("d_1Up", "d_3Up").imag() << " " 
 			          << green("d_0Up", "d_1Down").real() << " " << green("d_0Up", "d_1Down").imag() << " "
 			          << green("d_1Up", "d_2Down").real() << " " << green("d_1Up", "d_2Down").imag() << std::endl;
 			

@@ -39,6 +39,7 @@ namespace Ma {
 		signTrace_(1),
 		signBath_(1),
 		accSign_(.0),
+		accChiij_(.0,nSite_*nSite_),
 		pK_(.0, jNumericalParams.at("EOrder").get_int()),
 		acc_(jNumericalParams),
 		updateAcc_(2*nSite_, .0),
@@ -121,10 +122,16 @@ namespace Ma {
 			//std::cout << sign << std::endl;
 			
 			int k = 0;
+			std::vector<double> Chiij_local(4,0.);
 			for(int site = 0; site < nSite_; ++site) {
-				trace_[site]->measure(sign);
+				trace_[site]->measure(sign,Chiij_local[site]);
 				k += (trace_[site]->operators(0).size() + trace_[site]->operators(1).size())/2;
 			};
+			for(int i = 0;i<nSite_;i++){
+				for(int j = 0;j<nSite_;j++){
+					accChiij_[i*nSite_ + j] += sign*Chiij_local[i]*Chiij_local[j]/beta_;
+				}
+			}
 			
 			pK_[k] += sign;
 			//std::cout << k << std::endl;
@@ -140,6 +147,10 @@ namespace Ma {
 			pK_ /= NAlpsMeas;
 		    measurements["pK"] << pK_;
 			pK_ = .0;
+
+			accChiij_ /= NAlpsMeas;
+			measurements["Chiij"] << accChiij_;
+			accChiij_ = .0;
 			
 			for(int site = 0; site < nSite_; ++site) trace_[site]->measure(measurements, site, acc_, NAlpsMeas);
 			
@@ -163,7 +174,7 @@ namespace Ma {
 			acc_.D = .0;
 			acc_.Chi = .0;
 
-			link_.measure(measurements, NAlpsMeas);			
+			link_.measure(measurements, NAlpsMeas);	
 		};
 		
 		void cleanUpdate() { 
@@ -212,6 +223,7 @@ namespace Ma {
 		int signBath_;
 		
 		double accSign_;
+		std::valarray<double> accChiij_;
 		std::valarray<double> pK_;
 		Tr::Meas acc_;
 		

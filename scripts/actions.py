@@ -51,7 +51,7 @@ def all_occupations_in_folder(files_dir):
 	index = find_missing_occupation(input_dir,data_dir)
 	if index != None:
 		os.chdir("scripts")
-		run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
+		run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir),  os.path.join(data_from_autocoherence,input_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
 		run(["sbatch","actions.sh","-a","occupations","-f",os.path.basename(os.path.normpath(files_dir))])
 	else:
 		for file in single_occupation_files:
@@ -151,7 +151,7 @@ def prepare_copy(folder_name):
 def compute_order_parameter(folder_name):
     filename = "green"
     save_filename = folder_name + "/order_graph"
-    Composante = 3
+    Composante = -2
     graph = np.zeros(0)
     G = []
     offset = 1
@@ -179,7 +179,6 @@ def compute_order_parameter(folder_name):
         print(str(e))
     if len(G[0]) != 0:
         G = np.array(G[:-1]).astype(float)
-        print(G.shape)
         #Ici, G[it][iwn][site]
         G = np.transpose(G,(1,2,0)) #Ici, G[iwn][site][it], mieux pour voir quelquechose
         with open(folder_name + "/IN/params1.json") as f:

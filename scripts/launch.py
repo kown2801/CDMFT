@@ -42,7 +42,7 @@ def run(iterations_max,files_dir,iteration_start = 0):
 		to_log("end iteration " + str(iterations)  + " at: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")) + "\n")
 
 		#We call the plaquette computations on another sbatch to not keep a lot of processors idle
-		call(["sbatch", "run_occupation.sh", output_dir, data_dir, "params", str(iterations)])
+		call(["sbatch", "run_occupation.sh", output_dir, input_dir, data_dir, "params", str(iterations)])
 		#We compute the order parameter
 		call(["./actions.py", "-a","order_parameter", "-f",os.path.basename(files_dir)])
 		return 0
