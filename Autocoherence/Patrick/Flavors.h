@@ -103,7 +103,16 @@ namespace Fl {
 		FlavorMatrix& operator=(std::complex<double> val) { for(int i = 0; i < N*N; ++i) data_[i] = val; return *this;};
 		FlavorMatrix& operator*=(std::complex<double> fact) { for(int i = 0; i < N*N; ++i) data_[i] *= fact; return *this;};
 		FlavorMatrix& operator/=(std::complex<double> divisor) { for(int i = 0; i < N*N; ++i) data_[i] /= divisor; return *this;};
-		
+		std::string toString(){
+			std::stringstream ss;
+			for(int i = 0; i < N; ++i){
+				for(int j = 0; j < N; ++j){
+					ss << data_[i+N*j] << " ";
+				}
+				ss<<std::endl;
+			}
+			return ss.str();
+		}
 		void equ(FlavorMatrix& dest) const { for(int i = 0; i < N*N; ++i) dest.data_[i] = data_[i];}; 
 		void mequ(FlavorMatrix& dest) const { for(int i = 0; i < N*N; ++i) dest.data_[i] -= data_[i];}; 
 		void pequ(FlavorMatrix& dest) const { for(int i = 0; i < N*N; ++i) dest.data_[i] += data_[i];};
