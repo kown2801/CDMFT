@@ -52,7 +52,7 @@ You can then make the library
 Copy the libjson_spirit.so file from the json_spirit/build/json_spirit folder into your lib folder
 Copy all the .h files from the json_spirit/json_spirit folder into a json_spirit folder in your include folder (there should be 10 files).
 
-You then need to modify the json_spirit_utils.h file. Replace the lines : 
+You then need to modify the json_spirit_value.h file. Replace the lines : 
 	
 	#if defined(_MSC_VER)
 	  // comment out the value types you don't need to reduce build times and intermediate file sizes
