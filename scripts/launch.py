@@ -18,11 +18,6 @@ def run(iterations_max,files_dir,iteration_start = 0):
 	path_to_main_dir = "../"
 	os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)))) #The working directory is now the scripts directory
 
-	host_file = os.path.join(files_dir,"hosts")
-	f = open(host_file,"w")
-	call(["slurm_hl2hl.py","--format","MPIHOSTLIST"],stdout=f)
-	f.close()
-
 	iterations=iteration_start
 	autocoherence_dir = os.path.join(path_to_main_dir,"Autocoherence")
 	solver_dir = os.path.join(path_to_main_dir,"ImpuritySolver")
@@ -46,7 +41,7 @@ def run(iterations_max,files_dir,iteration_start = 0):
 			to_log("There was an error, an input parameters file was not produced ("+ input_dir + "params" + str(iteration_number) + ".json" + "), Retrying the iteration before. Try number " + str(number_of_tries))
 			return -1
 		to_log("Calling the Impurity Solver")
-		call(["mpiexec", "--hostfile", host_file, os.path.join(solver_dir,"IS"),input_dir, output_dir,"params" + str(iterations)])
+		call(["srun", os.path.join(solver_dir,"IS"),input_dir, output_dir,"params" + str(iterations)])
 		to_log("Calling the Autocoherence")
 		call([os.path.join(autocoherence_dir,"CDMFT"), output_dir, input_dir, data_dir, "params", str(iterations)])
 		to_log("end iteration " + str(iterations)  + " at: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")) + "\n")

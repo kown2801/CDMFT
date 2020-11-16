@@ -95,7 +95,8 @@ namespace Tr {
 		lenght_(2, .0),
 		overlap_(.0),
 		toChi_(0),
-		acc_(jNumericalParams) {
+		acc_(jNumericalParams),
+	    chiTemp_(acc_.Chi.size()){
 			operators_[0] = new Operators();
 			operators_[1] = new Operators();
 			
@@ -236,7 +237,8 @@ namespace Tr {
 			std::swap(operators_[0], operators_[1]);
 		};
 		
-		void measure(int sign,double& Chiij) {
+		std::valarray<Ut::complex>& measure(int sign) {
+			chiTemp_ = 0; //We reset the temporary Chiij to make sure we don't make mistakes later
 			acc_.k += sign*((operators(0).size() + operators(1).size())/2.);
 			
 			if(operators(0).size() && operators(1).size()) {
@@ -245,8 +247,8 @@ namespace Tr {
 				acc_.Sz += sign*.5*(lenght_[0] - lenght_[1])/beta_;
 				acc_.Chi[0] += sign*.25*(lenght_[0] - lenght_[1])*(lenght_[0] - lenght_[1])/beta_;
 
-				//We test to get the staggered spin susceptibility, we get the Chiij for each site and multiply them later.
-				Chiij = .5*(lenght_[0] - lenght_[1]);
+				//We want the two-site dependant spin susceptibility, we get the Chiij for each site and multiply them later.
+				chiTemp_[0] = .5*(lenght_[0] - lenght_[1]);
 			} else if(operators(0).size()) {
 				double arg = mu_*beta_ - U_*lenght_[0];
 				double exp = std::exp(-std::abs(arg));
@@ -256,6 +258,8 @@ namespace Tr {
 				acc_.D += sign*lenght_[0]*fact/beta_;
 				acc_.Sz += sign*(-beta_*fact + lenght_[0])/(2.*beta_);
 				acc_.Chi[0] += sign*.25*((beta_ - 2.*lenght_[0])*fact + lenght_[0]*lenght_[0]/beta_);
+				//this next expression is only good when for different sites. This is taken into account in the Markovchain file
+				chiTemp_[0] = .5*(-beta_*fact + lenght_[0]);
 			} else if(operators(1).size()) {
 				double arg = mu_*beta_ - U_*lenght_[1];
 				double exp = std::exp(-std::abs(arg));
@@ -265,14 +269,19 @@ namespace Tr {
 				acc_.D += sign*lenght_[1]*fact/beta_;
 				acc_.Sz += sign*(beta_*fact - lenght_[1])/(2.*beta_);
 				acc_.Chi[0] += sign*.25*((beta_ - 2.*lenght_[1])*fact + lenght_[1]*lenght_[1]/beta_);
+				//This expression is only good when for different sites. This is taken into account in the Markovchain file
+				chiTemp_[0] =  .5*(beta_*fact - lenght_[1]);
 			} else {
 				acc_.N += sign*(Tr00_1_ + Tr00_2_)/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
 				acc_.D += sign*Tr00_2_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
-				acc_.Sz = .0;
+				acc_.Sz += .0;//There was no + sign here, meaning we reset the spin to 0 when there is no operator ?
 				acc_.Chi[0] += sign*beta_/2.*Tr00_1_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
+				//This expression is only good when for different sites. This is taken into account in the Markovchain file
+				chiTemp_[0] += .0;
 			}
 			
 			if(acc_.Chi.size() > 1) {
+				//In this part, we accumulate data for computing the spin susceptibility. According to the formula in PhysRevB.75.155113 for every site we only keep the sum over l and not the modulus square in order to the multiply across sites
 				if(!toChi_) {     //So wies aussieht haben wir hier glueck: keine fall unterschiedung fŸr 0 expansions ordnung nštig fuer finites omega					
 					toChi_ = new Ut::complex[acc_.Chi.size()];
 					
@@ -297,9 +306,12 @@ namespace Tr {
 					}
 				}
 
-				for(unsigned int n = 1; n < acc_.Chi.size(); ++n) 
+				for(unsigned int n = 1; n < acc_.Chi.size(); ++n){ 
+					chiTemp_[n] = toChi_[n]; 
 					acc_.Chi[n] += sign*(toChi_[n].real()*toChi_[n].real() + toChi_[n].imag()*toChi_[n].imag());				
-			};
+				}
+			}
+			return chiTemp_;
 		};
 		
 		void measure(Ut::Measurements& measurements, int site, Meas& meas, int NAlpsMeas) {
@@ -329,7 +341,9 @@ namespace Tr {
 			meas.D += acc_.D; acc_.D = .0;
 			meas.Chi += acc_.Chi; acc_.Chi = .0;
 		}
-		
+		std::valarray<double>& getChi(){
+			return acc_.Chi;
+		}	
 		void saveConfig(json_spirit::mObject& jConfig,int site) {
 			json_spirit::mObject jConfigSite;
 			for(int spin = 0; spin < 2; ++spin) {
@@ -383,7 +397,8 @@ namespace Tr {
 		
 		Ut::complex* toChi_;
 		Meas acc_;		
-		
+		std::valarray<Ut::complex> chiTemp_;
+
 		double lenghtDiff_;
 		double overlapDiff_;
 		

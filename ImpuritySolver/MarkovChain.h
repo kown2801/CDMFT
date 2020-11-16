@@ -39,9 +39,10 @@ namespace Ma {
 		signTrace_(1),
 		signBath_(1),
 		accSign_(.0),
-		accChiij_(.0,nSite_*nSite_),
 		pK_(.0, jNumericalParams.at("EOrder").get_int()),
 		acc_(jNumericalParams),
+		accChiij_(.0,nSite_*nSite_*acc_.Chi.size()),
+		accChiijReal_(0.,accChiij_.size()),
 		updateAcc_(2*nSite_, .0),
 		updateTot_(2*nSite_, .0),
 		updateFlipAcc_(0),
@@ -122,14 +123,14 @@ namespace Ma {
 			//std::cout << sign << std::endl;
 			
 			int k = 0;
-			std::vector<double> Chiij_local(4,0.);
+			std::vector<std::valarray<Ut::complex> > Chiij_local(nSite_,std::valarray<Ut::complex>(0.,acc_.Chi.size()));
 			for(int site = 0; site < nSite_; ++site) {
-				trace_[site]->measure(sign,Chiij_local[site]);
+				Chiij_local[site] = trace_[site]->measure(sign);
 				k += (trace_[site]->operators(0).size() + trace_[site]->operators(1).size())/2;
 			};
 			for(int i = 0;i<nSite_;i++){
 				for(int j = 0;j<nSite_;j++){
-					accChiij_[i*nSite_ + j] += sign*Chiij_local[i]*Chiij_local[j]/beta_;
+					accChiij_[std::slice((i*nSite_ + j)*acc_.Chi.size(),acc_.Chi.size(),1)] += Ut::complex(sign,0)*Chiij_local[i]*Chiij_local[j].apply(std::conj);
 				}
 			}
 			
@@ -145,13 +146,31 @@ namespace Ma {
 			measurements["Sign"] << accSign_/NAlpsMeas; accSign_ = 0;
 			
 			pK_ /= NAlpsMeas;
-		    measurements["pK"] << pK_;
+		    	measurements["pK"] << pK_;
 			pK_ = .0;
 
-			accChiij_ /= NAlpsMeas;
-			measurements["Chiij"] << accChiij_;
+			//The processing of the spin susceptibility is a little bit more complicated
+			std::valarray<Ut::complex> temp = accChiij_[std::slice(0,nSite_*nSite_,acc_.Chi.size())];
+			temp /= beta_;
+			accChiij_[std::slice(0,nSite_*nSite_,acc_.Chi.size())] = temp;
+			//We need to get an array of doubles
+			for(unsigned int n=0;n<accChiij_.size();n++){
+				accChiijReal_[n] = accChiij_[n].real();
+			}
+			//As stated in Trace.h, the result is not exactly good for the same site susceptibility when there is no particles of a certain spin on the sites. We correct that here
+			for(int n=0;n<nSite_;n++){
+				accChiijReal_[std::slice((n*nSite_ + n)*acc_.Chi.size(),acc_.Chi.size(),1)] = trace_[n]->getChi();
+			}
+			for(unsigned int n=1;n<acc_.Chi.size();n++){
+				std::valarray<double> temp = accChiijReal_[std::slice(n,nSite_*nSite_,acc_.Chi.size())];
+			        temp *= beta_/((2*n*M_PI)*(2*n*M_PI));
+				accChiijReal_[std::slice(n,nSite_*nSite_,acc_.Chi.size())] = temp;
+			}
+			accChiijReal_ /= NAlpsMeas;
+			measurements["Chiij"] << accChiijReal_;
 			accChiij_ = .0;
-			
+			//End of processing of the spin susceptibility
+
 			for(int site = 0; site < nSite_; ++site) trace_[site]->measure(measurements, site, acc_, NAlpsMeas);
 			
 			acc_.N /= nSite_;
@@ -223,9 +242,11 @@ namespace Ma {
 		int signBath_;
 		
 		double accSign_;
-		std::valarray<double> accChiij_;
 		std::valarray<double> pK_;
 		Tr::Meas acc_;
+		std::valarray<Ut::complex> accChiij_;//This valarray has a weird structure. It contains Chiij for all bosonic Matsubara frequencies. Sorted first by sites indices and then Matsubara frequencies.
+											//accChiij_[(i*nSite_ + j)*acc_.chi.size() + n] give Chi(i,j,i\oemga_n)
+		std::valarray<double> accChiijReal_;//As we can only save real numbers, we need a second array to store it
 		
 		std::vector<double> updateAcc_;
 		std::vector<double> updateTot_;
