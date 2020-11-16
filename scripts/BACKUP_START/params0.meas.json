@@ -1,0 +1,26 @@
+{
+	"Parameters" : {
+        "HYB":"Hyb1.json",
+    	"LINK":"Link.json",
+    	"SEED": 82149,
+        "CLEAN_EVERY_SWEEP": 5000,
+        "SAMPLE_EVERY_SWEEP": 24,
+        "STORE_EVERY_SAMPLE": 2000,
+        "MEASUREMENT_TIME" : 35.0,
+        "THERMALIZATION_TIME": 2.0,
+        "PROBFLIP": 0.0001,
+        "beta": 10.0,
+        "mu": 11.650,
+        "tpd": 1.5,
+        "tpp": 1.0,
+        "tppp":1.0,
+        "ep": 9.0,
+        "U": 12.0,
+        "weightR": 0.20,
+        "weightI": 0.0,
+        "EGreen": 25,
+        "EHyb": 15,
+        "EObs": 15,
+        "EOrder": 1000,
+    }
+}
