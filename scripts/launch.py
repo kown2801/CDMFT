@@ -42,6 +42,16 @@ def run(iterations_max,files_dir,iteration_start = 0):
 			return -1
 		to_log("Calling the Impurity Solver")
 		call(["srun", os.path.join(solver_dir,"IS"),input_dir, output_dir,"params" + str(iterations)])
+		#We need to verify that there are no nan numbers (we replace them with 0s)
+		out_file = open(os.path.join(output_dir,"params" + str(iterations) + ".meas.json"))
+		data = out_file.read()
+		out_file.close()
+		if "nan" in data:
+			to_log("A nan was present in the output file")
+		data = data.replace("nan","0")
+		out_file  = open(os.path.join(output_dir,"params" + str(iterations) + ".meas.json"),"w")
+		out_file.write(data)
+		out_file.close()
 		to_log("Calling the Autocoherence")
 		call([os.path.join(autocoherence_dir,"CDMFT"), output_dir, input_dir, data_dir, "params", str(iterations)])
 		to_log("end iteration " + str(iterations)  + " at: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")) + "\n")

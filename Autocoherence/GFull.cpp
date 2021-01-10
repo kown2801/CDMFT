@@ -8,17 +8,27 @@
 double fermi(double arg) {
 	return arg > .0 ? std::exp(-arg)/(1. + std::exp(-arg)) : 1./(1. + std::exp(arg));
 };
-
+void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
+	std::ifstream file(outputFolder + fileName); 
+	if(file) {
+		json_spirit::mValue temp;
+		json_spirit::read(file, temp); 
+		jLink = temp.get_array();
+	}else{
+		throw std::runtime_error(outputFolder + fileName + " not found.");
+	}
+}
 int main(int argc, char** argv)
 {
 	try {
-		if(argc != 5) 
-			throw std::runtime_error("Usage : GFULL inputFolder dataFolder filename iteration");
+		if(argc != 6) 
+			throw std::runtime_error("Usage : GFULL inputFolder outputFolder dataFolder filename iteration");
 		
 		std::string inputFolder = argv[1]; 
-		std::string dataFolder = argv[2];
-		std::string name = argv[3];
-		int const iteration = std::atoi(argv[4]);
+		std::string outputFolder = argv[2]; 
+		std::string dataFolder = argv[3];
+		std::string name = argv[4];
+		int const iteration = std::atoi(argv[5]);
 
 		newIO::GenericReadFunc readParams(inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json","Parameters");
 
@@ -64,51 +74,62 @@ int main(int argc, char** argv)
 		//
 		
 		Int::EulerMaclaurin2D<RCuOMatrix> integrator(1.e-4, 4, 12);
-		
+		//First we need to load the structure of the self file and then relate it to the Link file
+		std::ifstream structureFile((dataFolder + "structure" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
+		structureFile>>dummy; //We don't need the component frequency so we get rid of it
+		std::vector<std::string> component_ids;
+		std::string component_name;			
+	       	while(structureFile >> component_name) {
+			component_ids.push_back(component_name);
+		}
+		json_spirit::mArray jLink;
+		readLinkFile(readParams("LINK")->getString(),jLink,outputFolder);
+		std::size_t nSite_ = jLink.size()/2;
 		for(std::size_t n = 0; n < NMat; ++n) {
 			
 			std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
 						
-			double s00_R, s00_I, s01_R, s01_I, s11_R, s11_I,pphi_R, pphi_I, mphi_R, mphi_I;;
-			selfFile >> dummy >> s00_R >> s00_I >> s01_R >> s01_I >> s11_R >> s11_I >> pphi_R >> pphi_I >> mphi_R >> mphi_I;
-			std::complex<double> s00(s00_R, s00_I);
-			std::complex<double> s01(s01_R, s01_I);
-			std::complex<double> s11(s11_R, s11_I);
-			std::complex<double> pphi(pphi_R, pphi_I);
-			std::complex<double> mphi(mphi_R, mphi_I);
-			
+			//First we need to load all the selfEnergy components into a component_map
+			std::map<std::string,std::complex<double> > component_map;
+			selfFile >> dummy;//We discard the Matsubara frequency
+			for(std::size_t i = 0 ; i < component_ids.size() ; i++){
+				double this_component_real,this_component_imag;		
+				selfFile >> this_component_real >> this_component_imag;
+				component_map[component_ids[i]] = std::complex<double>(this_component_real,this_component_imag);
+			}
 			RCuMatrix selfEnergy;
-			selfEnergy("d_0Up", "d_0Up") = s00; selfEnergy("d_0Up", "d_1Up") = s01; selfEnergy("d_0Up", "d_2Up") = s11; selfEnergy("d_0Up", "d_3Up") = s01;
-			selfEnergy("d_1Up", "d_0Up") = s01; selfEnergy("d_1Up", "d_1Up") = s00; selfEnergy("d_1Up", "d_2Up") = s01; selfEnergy("d_1Up", "d_3Up") = s11;
-			selfEnergy("d_2Up", "d_0Up") = s11; selfEnergy("d_2Up", "d_1Up") = s01; selfEnergy("d_2Up", "d_2Up") = s00; selfEnergy("d_2Up", "d_3Up") = s01;
-			selfEnergy("d_3Up", "d_0Up") = s01; selfEnergy("d_3Up", "d_1Up") = s11; selfEnergy("d_3Up", "d_2Up") = s01; selfEnergy("d_3Up", "d_3Up") = s00;	
-			
-			selfEnergy("d_0Down", "d_0Down") = -std::conj(s00); selfEnergy("d_0Down", "d_1Down") = -std::conj(s01); selfEnergy("d_0Down", "d_2Down") = -std::conj(s11); selfEnergy("d_0Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_1Down", "d_0Down") = -std::conj(s01); selfEnergy("d_1Down", "d_1Down") = -std::conj(s00); selfEnergy("d_1Down", "d_2Down") = -std::conj(s01); selfEnergy("d_1Down", "d_3Down") = -std::conj(s11);
-			selfEnergy("d_2Down", "d_0Down") = -std::conj(s11); selfEnergy("d_2Down", "d_1Down") = -std::conj(s01); selfEnergy("d_2Down", "d_2Down") = -std::conj(s00); selfEnergy("d_2Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_3Down", "d_0Down") = -std::conj(s01); selfEnergy("d_3Down", "d_1Down") = -std::conj(s11); selfEnergy("d_3Down", "d_2Down") = -std::conj(s01); selfEnergy("d_3Down", "d_3Down") = -std::conj(s00);	
-			
-			selfEnergy("d_0Up", "d_1Down") = 
-			selfEnergy("d_0Down", "d_1Up") = 
-			selfEnergy("d_1Up", "d_0Down") = 
-			selfEnergy("d_1Down", "d_0Up") = 
-			selfEnergy("d_2Up", "d_3Down") = 
-			selfEnergy("d_2Down", "d_3Up") =
-			selfEnergy("d_3Up", "d_2Down") = 
-			selfEnergy("d_3Down", "d_2Up") = (pphi - mphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
-			selfEnergy("d_1Up", "d_2Down") = 
-			selfEnergy("d_1Down", "d_2Up") = 
-			selfEnergy("d_2Up", "d_1Down") = 
-			selfEnergy("d_2Down", "d_1Up") = 
-			selfEnergy("d_3Up", "d_0Down") = 
-			selfEnergy("d_3Down", "d_0Up") = 
-			selfEnergy("d_0Up", "d_3Down") = 
-			selfEnergy("d_0Down", "d_3Up") = (mphi - pphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
+			//Now we can initialize the selfEnergy
+			for(std::size_t i=0;i<jLink.size();i++){
+				for(std::size_t j=0;j<jLink.size();j++){
+					if (jLink[i].get_array()[j].get_str() != "empty"){
+						std::complex<double> this_component = component_map[jLink[i].get_array()[j].get_str()];		
+						selfEnergy(i,j) = this_component;
+						//We need to beware to initialize the down component according to the Nambu convention
+						if(i >= nSite_ && j>= nSite_){
+							selfEnergy(i,j) = -std::conj(selfEnergy(i,j));
+						}
+					}
+				}
+			}
+			//Then we need to make sure the anormal part is symmtric and without a phase. (apparently this is very important)
+			//This is specific to our Link.json file and should be removed or should should the Link File change unfortunately 
+			std::complex<double> mphi_component = component_map["mphi"];		
+			std::complex<double> pphi_component = component_map["pphi"];		
+			for(std::size_t i=0;i<jLink.size();i++){
+				for(std::size_t j=0;j<jLink.size();j++){
+					if (jLink[i].get_array()[j].get_str() == "pphi"){
+						selfEnergy(i,j) = (pphi_component - mphi_component).real()/2;
+					}else if (jLink[i].get_array()[j].get_str() == "mphi"){
+						selfEnergy(i,j) = (mphi_component - pphi_component).real()/2;
+					}
+				}
+			}
+			//Now we compute the Full Cluster Green's function
 			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			RCuOMatrix green = integrator(latticeGreen, M_PI/2., M_PI/2.);
 			
+			//We then output the results we need in the data files
+			//I don't really know what we need right now so I don't change this part
 			pxgreenFile << iomega.imag() << " "  
 			            << green("px_0Up", "px_0Up").real() << " " << green("px_0Up", "px_0Up").imag() << " " 
 			            << green("px_0Up", "px_1Up").real() << " " << green("px_0Up", "px_1Up").imag() << " " 
@@ -147,7 +168,7 @@ int main(int argc, char** argv)
 			          << green("d_0Up", "d_1Down").real() << " " << green("d_0Up", "d_1Down").imag() << " "
 			          << green("d_1Up", "d_2Down").real() << " " << green("d_1Up", "d_2Down").imag() << std::endl;
 			
-			
+			//We then compute the oxygen occupation (just as in the non-antiferromagnetic case, there is no difference of course)
 			double temp = .0;
 			
 			temp += green("px_0Up", "px_0Up").real();

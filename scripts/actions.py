@@ -51,7 +51,7 @@ def all_occupations_in_folder(files_dir):
 	index = find_missing_occupation(input_dir,data_dir)
 	if index != None:
 		os.chdir("scripts")
-		run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
+		run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,input_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
 		run(["sbatch","actions.sh","-a","occupations","-f",os.path.basename(os.path.normpath(files_dir))])
 	else:
 		for file in single_occupation_files:

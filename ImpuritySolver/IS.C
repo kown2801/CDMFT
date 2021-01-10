@@ -27,13 +27,10 @@ int main(int argc, char** argv)
 			json_spirit::mValue jHyb;
 			mpi::read_json(inputFolder + jParams.at("HYB").get_str(), jHyb);
 			
-			json_spirit::mValue jLinkA;
-			mpi::read_json(inputFolder + jParams.at("LINKA").get_str(), jLinkA);
+			json_spirit::mValue jLink;
+			mpi::read_json(inputFolder + jParams.at("LINK").get_str(), jLink);
 
-			json_spirit::mValue jLinkN;
-			mpi::read_json(inputFolder + jParams.at("LINKN").get_str(), jLinkN);
-
-			markovChain = new Ma::MarkovChain(jParams, jHyb.get_obj(), jLinkN.get_array(), jLinkA.get_array(), simulation);
+			markovChain = new Ma::MarkovChain(jParams, jHyb.get_obj(), jLink.get_array(), simulation);
 		}
 
 		MC::MonteCarlo(*markovChain, simulation);
