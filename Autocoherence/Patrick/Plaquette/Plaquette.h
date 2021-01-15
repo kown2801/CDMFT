@@ -370,6 +370,43 @@ private:
 };
 
 
+struct SpinSusceptibility {
+	SpinSusceptibility(std::complex<double> z, double tpd, double tpp, double tppp, double ep, RCuMatrix const& selfEnergy,double qx,double qy) : tpd_(tpd), tpp_(tpp), tppp_(tppp), ep_(ep),z_(z),totalGreen_(z,tpd, tpp, tppp, ep,selfEnergy), qx_(qx), qy_(qy) {};
+	
+	CuOMatrix operator()(double kx, double ky) {
+		CuOSMatrix green_k = 	totalGreen_(kx,ky);
+		CuOSMatrix green_k_q = 	totalGreen_(kx + qx_,ky + qy_);
+		CuOMatrix result = 0;
+		for(int i=0;i<3;i++){
+			for(int j=0;j<3;j++){
+				//We start by adding the contributions from the normal Green's function
+				result(i,j) -= green_k(i,j)*green_k_q(j,i) + green_k(i+3,j+3)*green_k_q(i+3,j+3);
+				//We then add the contribution from the anormal part of the Green's function ( the Gorkov function). This contribution has a minus sign because spins of different directions are involved
+				result(i,j) += green_k(i,j+3)*green_k_q(j+3,i) + green_k(i+3,j)*green_k_q(j,i+3);
+			}
+		}
+				
+		return 2.*result;//The factor 2 is necessary because we sum only on positive matsubara frequencies. The real part is even in matsubara frequencies so it's ok. One shouldN,t consider the imaginary part of the resulting matrix, because it is odd in matsubara frequencies
+	};
+private:
+	double const tpd_;
+	double const tpp_;
+	double const tppp_;
+	double const ep_;
+	std::complex<double> z_;
+	RCuOLatticeGreenPeriodized totalGreen_;
+	double qx_;
+	double qy_;
+	CuOSMatrix construct_tau3() {
+		CuOSMatrix tau3 = 0;
+		for(int oi = 0; oi < 3; ++oi){
+	        tau3(oi,oi) = 1;
+			tau3(oi + 3,oi + 3) = -1;
+		}
+		return tau3;
+	}
+};
+
 #endif
 
 
