@@ -34,10 +34,13 @@ def resume_simulation(data_dir_name,iteration_min,iteration_max,Computing_days):
 	sh_destination.write('#!/bin/bash\n')
 	sh_destination.write("#SBATCH --time=" + Computing_days + "-00:00:00\n")
 	parameters = data_dir_name.split("_")
-	ep = get_float(parameters[0])
-	beta = get_float(parameters[1])
-	mu = get_float(parameters[2])
-	sh_destination.write('#SBATCH --job-name=""' + ep + beta + mu + '""\n')
+	try:
+		ep = get_float(parameters[0])
+		beta = get_float(parameters[1])
+		mu = get_float(parameters[2])
+		sh_destination.write('#SBATCH --job-name=""' + ep + beta + mu + '""\n')
+	except:
+		sh_destination.write('#SBATCH --job-name=""' + data_dir_name + '""\n')
 	for l in lines:
 		sh_destination.write(l)
 	sh_destination.write(os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(iteration_max) + " " + str(iteration_min))
