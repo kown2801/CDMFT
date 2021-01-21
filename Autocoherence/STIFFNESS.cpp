@@ -91,12 +91,13 @@ int main(int argc, char** argv)
 			last_stiffness = integrator(superfluid, M_PI, M_PI);
 			stiffness += last_stiffness;
 			n_max = n;
-			std::cout << stiffness.real() << stiffness.imag() << std::endl;
 			if( std::abs(last_stiffness)/std::abs(stiffness) * (NMat - n) < error/10 || std::abs(stiffness) < min_value){
 				break;
 			}
 		}
-		std::cout << "This operation went to the " << n_max << "th Matsubara frequency" << std::endl;
+	//Because we sumed on the Matsubara Frequencies, we must normalize by a $\beta$ factor (this is in the formula of course)
+	stiffness/=beta;
+	std::cout << "This operation went to the " << n_max << "th Matsubara frequency" << std::endl;
     	stiff << iteration << " " << stiffness.real() << " " << stiffness.imag() << std::endl;
     	stiff.close();
     }

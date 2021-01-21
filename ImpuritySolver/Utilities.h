@@ -145,15 +145,19 @@ struct Observable {
 		{
 		  return sum_[0];
 		}
-
+		/* In this function, we take all the measurements we have on all the processors and regroup them on the master processor
+		 * From this data, we compute the mean and the binning error (on the single processors and also between the processors)
+		 * We save save it to two json_spirit objects to be able to save them to a file
+		 * */
 		void reduce(json_spirit::mValue& jMean,json_spirit::mValue& jErrors) {
+			
 			if(counter_ < 2)
 				throw std::runtime_error("Meas: Not enough measurements taken !");
 			//First we need to accumulate the counter in order to know how much measurements we have in total
 			boost::uint64_t accCounter = 0;
 			mpi::reduce(counter_,accCounter);
 
-			//Now we accumulate the observable sums in order to get the total measurement sum
+			//Now we accumulate the observable sums
 			std::valarray<double> binningSum = binning_sum();
 			std::valarray<double> accBinningMean(mpi::rank() == mpi::master ? binningSum.size() : 0);
 			mpi::reduce(binningSum,accBinningMean);
@@ -164,17 +168,17 @@ struct Observable {
 				jMean = json_spirit::mValue(&accBinningMean[0], &accBinningMean[0] + accBinningMean.size());
 			}
 			
-			//Now we get the error
+			//Now we get the error. This operation is a bit trickier
 			//First we get the error from the simulations when considered independently (what Alps does)
-			//First we need to get the maximum binning_depth across processors
+				//First we need to get the maximum binning_depth across processors
 			boost::uint64_t binningDepth = binning_depth();
 			boost::uint64_t maxBinningDepth;
 			mpi::getMax(binningDepth,maxBinningDepth);
 
 			std::vector<double> accBinningErrs;
-			//Then we compute the error for all binning depths.
-			//We do this by first merging the data rom all processors at this binning level (add the sums and the counts)
-			//And then computing the error using the un-biased variance 
+				//Then we compute the error for all binning depths.
+				//We do this by first merging the data from all processors at each binning level (add the sums and the counts)
+				//And then computing the error using the un-biased variance 
 			for(uint32_t i=0;i< maxBinningDepth;i++)
 			{
 				boost::uint64_t nbTerms(0);
@@ -205,6 +209,7 @@ struct Observable {
 					accBinningErrs.insert(accBinningErrs.end(),std::begin(accBinningErr),std::end(accBinningErr));
 				}
 			}
+
 			//Then we want to get the error (and maybe some error convergence) thanks to our multiple processors
 			//We need a list of all means and measurement counts
 			//We also need to gather all the data in a one dimensional vector and then put in a vector of valarray (needed for MPI_Gather)
@@ -220,7 +225,7 @@ struct Observable {
 #else
 			allBinningCounts[0] = counter_;
 #endif
-			//We do a binning analysis on the collected data (is it reallly necessary when the processors are supposed to have independent simulations ?)
+			//We do a binning analysis on the collected data (is it really necessary when the processors are supposed to have independent simulations ?)
 			if(mpi::rank() == mpi::master) {
 				//We need to put the Sums into a vector of valarray : 	
 				std::vector<std::valarray<double> > allBinningSums;
@@ -252,7 +257,19 @@ struct Observable {
 				}
 			}
 			if(mpi::rank() == mpi::master) {
-				jErrors = json_spirit::mValue(&accBinningErrs[0], &accBinningErrs[0] + accBinningErrs.size());
+				/* In order to save the whole error graphs if you want to do some error analysis, use th following line */
+				//jErrors = json_spirit::mValue(&accBinningErrs[0], &accBinningErrs[0] + accBinningErrs.size());
+				/* Else we need for each vector component, only the maximum error */
+				///*
+				std::valarray<double> binningErrs(accBinningMean.size());
+				//We need to have a valarray to be able to perform the max operation on a slice
+				std::valarray<double> accBinningErrsValArray(accBinningErrs.data(), accBinningErrs.size());
+				uint32_t n_errs = accBinningErrs.size()/binningErrs.size();
+				for(uint32_t i = 0 ; i<binningErrs.size();i++){
+					binningErrs[i] = static_cast<std::valarray<double> >(accBinningErrsValArray[std::slice(i,n_errs,binningErrs.size())]).max();
+				}
+				jErrors = json_spirit::mValue(&binningErrs[0], &binningErrs[0] + binningErrs.size());
+				//*/
 			}
 
 
