@@ -9,7 +9,7 @@ void readScalSites(std::string obs, newIO::GenericReadFunc& readParams, int iter
 	file << iteration; 
 	
 	for(int i = 0; i < 4; ++i) {
-		std::string s = boost::lexical_cast<std::string>(i); 
+		std::string s = std::to_string(i); 
 		file << " " << readParams(obs + "_" + s)->getDouble();
 	}
 	
@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 		std::string filename = "";
 		std::string nodeName = "";
 		if(iteration){
-			filename = inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json";
+			filename = inputFolder + name + std::to_string(iteration) + ".meas.json";
 			nodeName = "Parameters";
 		}else{
 			filename = inputFolder + name + "0.json";
@@ -64,9 +64,9 @@ int main(int argc, char** argv)
 		std::vector<RCuMatrix> hyb;
 		if(iteration) {
 
-			newIO::GenericReadFunc readMeas(inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json","Measurements");
+			newIO::GenericReadFunc readMeas(inputFolder + name + std::to_string(iteration) + ".meas.json","Measurements");
 			readMeas.addSign(readMeas("Sign")->getDouble()); //Very important, otherwise the sign is not included in the simulation
-			newIO::GenericReadFunc readHyb(outputFolder + boost::lexical_cast<std::string>(readParams("HYB")->getString()).c_str(),"");
+			newIO::GenericReadFunc readHyb(outputFolder + readParams("HYB")->getString(),"");
 			
 			std::size_t const NHyb = readHyb("00")->getSize();
 			if(NHyb != readHyb("01" )->getSize()) throw std::runtime_error("01: missmatch in entry length's of the hybridisation function.");
@@ -226,7 +226,7 @@ int main(int argc, char** argv)
 					for(unsigned int n = 0; n < readMeas("Chi")->getSize(); ++n) {
 						file << 2*n*M_PI/beta;
 						for(int i = 0; i < 4; ++i) {
-							std::string s = boost::lexical_cast<std::string>(i);
+							std::string s = std::to_string(i);
 							file << " " << readMeas("Chi_" + s)->getDouble(n);
 						}
 						file << std::endl;
@@ -357,9 +357,9 @@ int main(int argc, char** argv)
 
 		IO::WriteFunc writeHyb;
 					
-		std::ofstream selfFile((dataFolder + "self" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
-		std::ofstream greenFile((dataFolder + "green" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
-		std::ofstream hybFile((dataFolder + "hyb" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
+		std::ofstream selfFile((dataFolder + "self" + std::to_string(iteration) + ".dat").c_str());
+		std::ofstream greenFile((dataFolder + "green" + std::to_string(iteration) + ".dat").c_str());
+		std::ofstream hybFile((dataFolder + "hyb" + std::to_string(iteration) + ".dat").c_str());
 		
 		Int::EulerMaclaurin2D<RCuMatrix> integrator(1.e-10, 4, 12);
 		
@@ -412,10 +412,10 @@ int main(int argc, char** argv)
 		writeHyb("01").FM() = -tpd*tpd; 
 		writeHyb("11").FM() = .0; 
 				
-		readParams("HYB")->setString("Hyb" + boost::lexical_cast<std::string>(iteration + 1) + ".json");
-		writeHyb.write(beta,outputFolder + "Hyb" + boost::lexical_cast<std::string>(iteration + 1) + ".json");
+		readParams("HYB")->setString("Hyb" + std::to_string(iteration + 1) + ".json");
+		writeHyb.write(beta,outputFolder + "Hyb" + std::to_string(iteration + 1) + ".json");
 
-		readParams.write((outputFolder + "params" +  boost::lexical_cast<std::string>(iteration + 1) + ".json").c_str());
+		readParams.write((outputFolder + "params" +  std::to_string(iteration + 1) + ".json").c_str());
 	}
 	catch(std::exception& exc) {
 		std::cerr << exc.what() << "\n";

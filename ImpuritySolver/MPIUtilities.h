@@ -80,7 +80,7 @@ namespace mpi {
 			toReceive = toTransmit;
 #endif
 	}
-	void reduce(boost::uint64_t &toTransmit,boost::uint64_t &toReceive){
+	void reduce(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
 			MPI_Reduce(&toTransmit, mpi::rank() == mpi::master ? &toReceive : 0, 1, MPI_DOUBLE, MPI_SUM, mpi::master, MPI_COMM_WORLD);	
 #else
@@ -94,7 +94,7 @@ namespace mpi {
 			toReceive = toTransmit;
 #endif
 	}
-	void allReduce(boost::uint64_t &toTransmit,boost::uint64_t &toReceive){
+	void allReduce(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
 			MPI_Allreduce(&toTransmit, &toReceive, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);	
 #else
@@ -102,7 +102,7 @@ namespace mpi {
 #endif
 	}
 
-	void getMax(boost::uint64_t &toTransmit,boost::uint64_t &toReceive){
+	void getMax(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
 			MPI_Allreduce(&toTransmit, &toReceive, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);	
 #else

@@ -1,7 +1,6 @@
 #ifndef __PLAQUETTE
 #define __PLAQUETTE
 
-#include <boost/lexical_cast.hpp>
 #include "../Flavors.h"
 
 Fl::FlavorNames RCuNames[] = {"d_0Up", "d_1Up", "d_2Up", "d_3Up", "d_0Down", "d_1Down", "d_2Down", "d_3Down"};

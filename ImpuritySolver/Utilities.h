@@ -3,20 +3,10 @@
 
 #include <vector>
 #include <complex>
-#include <boost/random.hpp>
+#include <random>
 #include <valarray>
 #include "MPIUtilities.h"
 #include <iterator>
-#define BOOST_NUMERIC_FUNCTIONAL_STD_VALARRAY_SUPPORT
-#include <boost/accumulators/numeric/functional/valarray.hpp>
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/variance.hpp>
-using namespace boost::accumulators;
-
-//Input für Matrizen ist Row-Major
-//BOOST_STATIC_ASSERT(numeric_limits<double>::is_iec559) for memset ?????
 
 extern "C" {
 	double dasum_(int const*, double const*, int const*);
@@ -37,9 +27,9 @@ namespace Ut {
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------
 	
 	typedef std::complex<double> complex;
-	typedef boost::mt19937 EngineType;
-	typedef boost::uniform_real<double> UniformDistribution;
-	typedef boost::variate_generator<EngineType&, UniformDistribution> UniformRngType;
+	typedef std::mt19937 EngineType;
+	typedef std::uniform_real_distribution<double> UniformDistribution;
+	typedef std::function<double()> UniformRngType;
 	
 	//-------------------------------------------------------------------------------------------------------------------------------------------------------
 	
@@ -88,10 +78,10 @@ struct Observable {
   		    sum_[0]+=x;
   		    sum2_[0]+= x*x;
 
-		  	boost::uint64_t i=counter_;
+		    uint64_t i=counter_;
   		    counter_++;
   		    bin_entries_[0]++;
-  		    boost::uint64_t binlen=1;
+  		    uint64_t binlen=1;
   		    std::size_t bin=0;
 		  	  		   // binning
   		    do{
@@ -123,7 +113,7 @@ struct Observable {
   		        }
   		    } while (i>>=1);
 		}
-		boost::uint64_t binning_count() const {return counter_;} // number of measurements performed
+		uint64_t binning_count() const {return counter_;} // number of measurements performed
 		std::valarray<double> binsum(std::size_t i) const
 		{
 		  return sum_[i]/double(1ll<<i);
@@ -133,7 +123,7 @@ struct Observable {
 		  std::valarray<double> retval(sum2_[i]);
 		  return retval;
 		}
-		boost::uint64_t binsize(std::size_t i) const //Returns the number of entry in the bin
+		uint64_t binsize(std::size_t i) const //Returns the number of entry in the bin
 		{
 			return bin_entries_[i];
 		}
@@ -154,7 +144,7 @@ struct Observable {
 			if(counter_ < 2)
 				throw std::runtime_error("Meas: Not enough measurements taken !");
 			//First we need to accumulate the counter in order to know how much measurements we have in total
-			boost::uint64_t accCounter = 0;
+			uint64_t accCounter = 0;
 			mpi::reduce(counter_,accCounter);
 
 			//Now we accumulate the observable sums
@@ -171,8 +161,8 @@ struct Observable {
 			//Now we get the error. This operation is a bit trickier
 			//First we get the error from the simulations when considered independently (what Alps does)
 				//First we need to get the maximum binning_depth across processors
-			boost::uint64_t binningDepth = binning_depth();
-			boost::uint64_t maxBinningDepth;
+			uint64_t binningDepth = binning_depth();
+			uint64_t maxBinningDepth;
 			mpi::getMax(binningDepth,maxBinningDepth);
 
 			std::vector<double> accBinningErrs;
@@ -181,8 +171,8 @@ struct Observable {
 				//And then computing the error using the un-biased variance 
 			for(uint32_t i=0;i< maxBinningDepth;i++)
 			{
-				boost::uint64_t nbTerms(0);
-				boost::uint64_t accNbTerms(0);
+				uint64_t nbTerms(0);
+				uint64_t accNbTerms(0);
 				//If the current binning level is above the maximum binning level for this processors, we do nothing
 				if(binningDepth > i){
 					nbTerms = binsize(i);
@@ -219,7 +209,7 @@ struct Observable {
 #else
 			allBinningSumsGather = binningSum;
 #endif
-			std::vector<boost::uint64_t> allBinningCounts(mpi::number_of_workers(),0);
+			std::vector<uint64_t> allBinningCounts(mpi::number_of_workers(),0);
 #ifdef HAVE_MPI
 			MPI_Gather(&counter_,1,MPI_DOUBLE,&allBinningCounts[0],1, MPI_DOUBLE,0,MPI_COMM_WORLD);
 #else
@@ -234,12 +224,12 @@ struct Observable {
 				}
 				//We compute the statistics on the present arrays
 				while(allBinningSums.size() > 1){
-					boost::uint64_t N_total = std::accumulate(allBinningCounts.begin(), allBinningCounts.end() , 0);
-					boost::uint64_t N_stage = allBinningCounts.size();
+					uint64_t N_total = std::accumulate(allBinningCounts.begin(), allBinningCounts.end() , 0);
+					uint64_t N_stage = allBinningCounts.size();
 					std::valarray<double> current_total_sum(static_cast<double>(0),binningSum.size());
 					current_total_sum = std::accumulate(allBinningSums.begin(), allBinningSums.end() , current_total_sum);
 					std::valarray<double> error(static_cast<double>(0),binningSum.size());
-					for(boost::uint64_t i=0;i<N_stage;i++){
+					for(uint64_t i=0;i<N_stage;i++){
 						error += allBinningSums[i]*allBinningSums[i]/allBinningCounts[i]/N_total;
 					}
 					error -= (current_total_sum/(double)N_total)*(current_total_sum/(double)N_total);
@@ -248,7 +238,7 @@ struct Observable {
 					accBinningErrs.insert(accBinningErrs.end(),std::begin(error),std::end(error));
 
 					//We reduce the data size by 2 by regrouping data sets 2 by 2
-					for(boost::uint64_t i=0;2*i+1<N_stage;i++){
+					for(uint64_t i=0;2*i+1<N_stage;i++){
 						allBinningCounts[i] = allBinningCounts[2*i] + allBinningCounts[2*i+1];
 						allBinningSums[i] = allBinningSums[2*i] + allBinningSums[2*i+1];
 					}
@@ -275,11 +265,11 @@ struct Observable {
 
 		};
 	private:
-		boost::uint64_t counter_; 
+		uint64_t counter_; 
 		//Binning implementation
 		std::vector<std::valarray< double > > sum_; // sum of measurements in the bin
 		std::vector<std::valarray< double > > sum2_; // sum of the squares
-		std::vector<boost::uint64_t> bin_entries_; // number of measurements
+		std::vector<uint64_t> bin_entries_; // number of measurements
 		std::vector<std::valarray< double > > last_bin_; // the last value measured
 	};
 	
@@ -303,9 +293,9 @@ struct Observable {
 		json_spirit::mObject& jobspecs() { return jJobSpecs_;};
 		Measurements& meas() { return measurements_;};
 		
-		void save(boost::uint64_t thermalization_sweeps, boost::uint64_t measurement_sweeps) {
-			boost::uint64_t acc_thermalization_sweeps;
-			boost::uint64_t acc_measurement_sweeps;
+		void save(uint64_t thermalization_sweeps,uint64_t measurement_sweeps) {
+			int64_t acc_thermalization_sweeps;
+			uint64_t acc_measurement_sweeps;
 			
 #ifdef HAVE_MPI
 			MPI_Reduce(&thermalization_sweeps, mpi::rank() == mpi::master ? &acc_thermalization_sweeps : 0, 1, MPI_INT64_T, MPI_SUM, mpi::master, MPI_COMM_WORLD);

@@ -48,14 +48,14 @@ namespace MC {
 		std::time_t time;
 		Timer timer;
 		
-		boost::int64_t thermalization_sweeps = 0;
-		boost::int64_t measurement_sweeps = 0;
-		boost::int64_t measurementsFromLastSample = 0;
+		int64_t thermalization_sweeps = 0;
+		int64_t measurement_sweeps = 0;
+		int64_t measurementsFromLastSample = 0;
 
 		json_spirit::mObject const& jParams = simulation.params();		
-		boost::int64_t const clean_every_sweep = jParams.at("CLEAN_EVERY_SWEEP").get_int64();
-		boost::int64_t const sample_every_sweep = jParams.at("SAMPLE_EVERY_SWEEP").get_int64();
-		boost::int64_t const store_every_sample = jParams.at("STORE_EVERY_SAMPLE").get_int64();
+		int64_t const clean_every_sweep = jParams.at("CLEAN_EVERY_SWEEP").get_int64();
+		int64_t const sample_every_sweep = jParams.at("SAMPLE_EVERY_SWEEP").get_int64();
+		int64_t const store_every_sample = jParams.at("STORE_EVERY_SAMPLE").get_int64();
 		mpi::cout << "Start thermalization at " << std::ctime(&(time = std::time(NULL))) << std::flush; 
 		mpi::cout = mpi::one;
 		mpi::cout << "We go for " << 60.*jParams.at("THERMALIZATION_TIME").get_real() << " seconds of MonteCarlo thermalization" << std::endl;

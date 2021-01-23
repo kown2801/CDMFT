@@ -17,7 +17,7 @@ int main(int argc, char** argv)
 		int const iteration = std::atoi(argv[4]);
 
 		std::cout << "Iteration : " << iteration << std::endl;
-		newIO::GenericReadFunc readParams(inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json","Parameters");
+		newIO::GenericReadFunc readParams(inputFolder + name + std::to_string(iteration) + ".meas.json","Parameters");
 
 		double const mu = readParams("mu")->getDouble();
 		double const beta = readParams("beta")->getDouble();
@@ -35,7 +35,7 @@ int main(int argc, char** argv)
 		unsigned int const NMat = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
 	
 		std::string dummy;
-		std::ifstream selfFile((dataFolder + "self" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
+		std::ifstream selfFile((dataFolder + "self" + std::to_string(iteration) + ".dat").c_str());
 		if(!selfFile.is_open()){
 			std::cout << "No self-Energy file found. Continuing as if the self-Energy was zero" << std::endl;
 		}

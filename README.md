@@ -1,11 +1,54 @@
-This is the impurity solver programm
+# Foobar
+
+Foobar is a Python library for dealing with word pluralization.
+
+## Installation
+
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install foobar.
+
+```bash
+pip install foobar
+```
+
+## Usage
+
+```python
+import foobar
+
+foobar.pluralize('word') # returns 'words'
+foobar.pluralize('goose') # returns 'geese'
+foobar.singularize('phenomena') # returns 'phenomenon'
+```
+
+## Contributing
+Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+
+Please make sure to update tests as appropriate.
+
+## License
+[MIT](https://choosealicense.com/licenses/mit/)
+
+
+# CDMFT CT-QMC 3-band segment solver
+
+This solver is used to solve the three band Hubbard Model (or Emery model) in the CDMFT approximation with a Continuous Time Quantum Monte-Carlo impurity solver.
 This programm was written by Patrick Semon (patrick.semon@gmail.com as of June 2019).
 For license and use please advise him.
-If you have trouble following the steps you can always contact me (nicolas.kowalski.2016@polytechnique.org) 
+If you have trouble installing or using the program, you can contact the author of this REAMDE.md (nicolas.kowalski.2016@polytechnique.org) 
 
-%========= INSTALLATION ==========%
+## Installation
 
-This file describes how to install the program in a compute canada computer. If you are not on such computers, you will need to install more things than explicited here.
+This file describes how to install the program on a Compute Canada cluster.
+If you are not on such computers, you will need to install more things than explicited here.
+### Requirements
+
+This program relies on multiple libraries.
+Boost, OpenBlas, pthread, json_spirit, openmpi
+
+pthread is used only by OpenBlas and not used directly in the present program.
+
+
+
 Let's go.
 First you need to create a "local" folder in your home directory. Then inside of this folder, create two directories "lib" and "include".
 If at some point you don't understand the steps or the organisation of the folders, check the end of this installation tutorial where you have the finale structure of the local folder.

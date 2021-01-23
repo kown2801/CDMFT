@@ -12,7 +12,6 @@
 #include <set>
 #include "Utilities.h"
 #include "MPIUtilities.h"
-#include <boost/lexical_cast.hpp>
 
 
 /////////////////////////////////////////////////////////////////
@@ -101,9 +100,9 @@ namespace Tr {
 			operators_[1] = new Operators();
 			
 			if(jPreviousConfig.size()) {
-				json_spirit::mObject jPreviousConfigSite = jPreviousConfig.at("Site " + boost::lexical_cast<std::string>(site)).get_obj();
+				json_spirit::mObject jPreviousConfigSite = jPreviousConfig.at("Site " + std::to_string(site)).get_obj();
 				for(int spin = 0; spin < 2; ++spin) {
-					json_spirit::mArray jPreviousConfigSiteSpin = jPreviousConfigSite.at("Spin " + boost::lexical_cast<std::string>(spin)).get_array();
+					json_spirit::mArray jPreviousConfigSiteSpin = jPreviousConfigSite.at("Spin " + std::to_string(spin)).get_array();
 					std::size_t size = jPreviousConfigSiteSpin.size();
 					for(std::size_t i = 0; i < size; ++i) {
 						int type = jPreviousConfigSiteSpin[i].get_obj().at("type").get_int();
@@ -321,7 +320,7 @@ namespace Tr {
 			acc_.D /= NAlpsMeas; 
 			acc_.Chi /= NAlpsMeas;
 			
-			std::string s = boost::lexical_cast<std::string>(site);
+			std::string s = std::to_string(site);
 			measurements["k_" + s] << acc_.k;
 			measurements["N_" + s] << acc_.N;
 			measurements["D_" + s] << acc_.D;
@@ -354,9 +353,9 @@ namespace Tr {
 					jElement["time"] = it->time();
 					jConfigSiteSpin.push_back(jElement);
 				}
-				jConfigSite["Spin " + boost::lexical_cast<std::string>(spin)] = jConfigSiteSpin;
+				jConfigSite["Spin " + std::to_string(spin)] = jConfigSiteSpin;
 			}
-			jConfig["Site "+ boost::lexical_cast<std::string>(site)] = jConfigSite;
+			jConfig["Site "+ std::to_string(site)] = jConfigSite;
 		}
 		
 		/*

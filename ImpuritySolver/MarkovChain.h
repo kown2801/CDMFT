@@ -9,7 +9,6 @@
 #include <cstring>
 #include <cassert>
 #include <utility>
-#include <boost/random.hpp>
 #include <json_spirit.h>
 #include "Utilities.h"
 #include "Link.h"
@@ -29,7 +28,8 @@ namespace Ma {
 		simulation_(simulation),
 		node_(mpi::rank()),
 		rng_(jNumericalParams.at("SEED").get_int()),
-		urng_(rng_, Ut::UniformDistribution(.0, 1.)),
+		ud_(0.,1.),
+		urng_([this](){return ud_(rng_);}),
 		beta_(jNumericalParams.at("beta").get_real()),
 		probFlip_(jNumericalParams.at("PROBFLIP").get_real()),
 		nSite_(jLinkN.size()),
@@ -56,7 +56,7 @@ namespace Ma {
 
 
 			try{
-				mpi::read_json_all_processors(simulation_.outputFolder() + "config_" + boost::lexical_cast<std::string>(node_) + ".json", jPreviousConfigValue);
+				mpi::read_json_all_processors(simulation_.outputFolder() + "config_" + std::to_string(node_) + ".json", jPreviousConfigValue);
 				json_spirit::mObject const& jPreviousConfig = jPreviousConfigValue.get_obj();
 				if(jPreviousConfig.size()) {
 					double beta = jPreviousConfig.at("beta").get_real();
@@ -220,7 +220,7 @@ namespace Ma {
 				delete trace_[site];
 			};
 
-			std::ofstream file((simulation_.outputFolder() + "config_" + boost::lexical_cast<std::string>(node_) + ".json").c_str());			
+			std::ofstream file((simulation_.outputFolder() + "config_" + std::to_string(node_) + ".json").c_str());			
 			json_spirit::write(jConfig, file, json_spirit::pretty_print | json_spirit::single_line_arrays | json_spirit::remove_trailing_zeros);			
 			file.close();
 		};
@@ -228,6 +228,7 @@ namespace Ma {
 		Ut::Simulation& simulation_;
 		int const node_;
 		Ut::EngineType rng_;
+		Ut::UniformDistribution ud_;
 		Ut::UniformRngType urng_;
 		
 		double const beta_;

@@ -20,7 +20,7 @@ int main(int argc, char** argv)
 		std::string name = argv[3];
 		int const iteration = std::atoi(argv[4]);
 
-		newIO::GenericReadFunc readParams(inputFolder + name + boost::lexical_cast<std::string>(iteration) + ".meas.json","Parameters");
+		newIO::GenericReadFunc readParams(inputFolder + name + std::to_string(iteration) + ".meas.json","Parameters");
 
 		double const mu = readParams("mu")->getDouble();
 		double const beta = readParams("beta")->getDouble();
@@ -54,13 +54,13 @@ int main(int argc, char** argv)
 		
 		double ekin = EkinFM/2. - EkinSM*beta/4.;
 		
-		std::ifstream selfFile((dataFolder + "self" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
-		std::ofstream pxgreenFile((dataFolder + "pxgreen" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
-		std::ofstream pygreenFile((dataFolder + "pygreen" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
-		std::ofstream pxygreenFile((dataFolder + "pxygreen" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
+		std::ifstream selfFile((dataFolder + "self" + std::to_string(iteration) + ".dat").c_str());
+		std::ofstream pxgreenFile((dataFolder + "pxgreen" + std::to_string(iteration) + ".dat").c_str());
+		std::ofstream pygreenFile((dataFolder + "pygreen" + std::to_string(iteration) + ".dat").c_str());
+		std::ofstream pxygreenFile((dataFolder + "pxygreen" + std::to_string(iteration) + ".dat").c_str());
 		std::ofstream pfilling(dataFolder + "pn.dat", std::ios::out | std::ios::app);
 		std::ofstream ekinFile(dataFolder + "ekin.dat", std::ios::out | std::ios::app);	
-		std::ofstream greenFile((dataFolder + "dgreen" + boost::lexical_cast<std::string>(iteration) + ".dat").c_str());
+		std::ofstream greenFile((dataFolder + "dgreen" + std::to_string(iteration) + ".dat").c_str());
 		//
 		
 		Int::EulerMaclaurin2D<RCuOMatrix> integrator(1.e-4, 4, 12);
