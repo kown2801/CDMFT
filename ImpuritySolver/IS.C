@@ -1,4 +1,5 @@
 #include "MonteCarlo.h"
+#include "IO.h"
 
 int main(int argc, char** argv)
 {
@@ -27,13 +28,10 @@ int main(int argc, char** argv)
 			json_spirit::mValue jHyb;
 			mpi::read_json(inputFolder + jParams.at("HYB").get_str(), jHyb);
 			
-			json_spirit::mValue jLinkA;
-			mpi::read_json(inputFolder + jParams.at("LINKA").get_str(), jLinkA);
+			json_spirit::mArray jLink;
+			IO::readLinkFromParams(jLink, inputFolder,jParams);
 
-			json_spirit::mValue jLinkN;
-			mpi::read_json(inputFolder + jParams.at("LINKN").get_str(), jLinkN);
-
-			markovChain = new Ma::MarkovChain(jParams, jHyb.get_obj(), jLinkN.get_array(), jLinkA.get_array(), simulation);
+			markovChain = new Ma::MarkovChain(jParams, jHyb.get_obj(), jLink, simulation);
 		}
 
 		MC::MonteCarlo(*markovChain, simulation);

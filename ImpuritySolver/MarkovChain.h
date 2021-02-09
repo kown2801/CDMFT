@@ -24,7 +24,7 @@ namespace Ma {
 			out << "lall, schwaetz, d.h. vorallem dings wenn's z'streng wird." << std::endl << std::endl;
 		};
 		
-		MarkovChain(json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jHyb, json_spirit::mArray const& jLinkN, json_spirit::mArray const& jLinkA, Ut::Simulation& simulation) :
+		MarkovChain(json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jHyb, json_spirit::mArray const& jLink, Ut::Simulation& simulation) :
 		simulation_(simulation),
 		node_(mpi::rank()),
 		rng_(jNumericalParams.at("SEED").get_int()),
@@ -32,8 +32,8 @@ namespace Ma {
 		urng_([this](){return ud_(rng_);}),
 		beta_(jNumericalParams.at("beta").get_real()),
 		probFlip_(jNumericalParams.at("PROBFLIP").get_real()),
-		nSite_(jLinkN.size()),
-		link_(jNumericalParams, jHyb, jLinkN, jLinkA, simulation.meas()),
+		nSite_(jLink.size()/2),
+		link_(jNumericalParams, jHyb, jLink, simulation.meas()),
 		trace_(nSite_, static_cast<Tr::Trace*>(0)),
 		bath_(new Ba::Bath()),
 		signTrace_(1),
@@ -47,8 +47,6 @@ namespace Ma {
 		updateTot_(2*nSite_, .0),
 		updateFlipAcc_(0),
 		updateFlipTot_(0) {
-			if(jLinkN.size() != jLinkA.size())
-				throw std::runtime_error("MarkovChain: missmatch in size of LinkN and LinkA.");
 			Ut::Measurements& measurements = simulation.meas();
 			std::cout << jNumericalParams.at("SEED").get_int() << std::endl;
             

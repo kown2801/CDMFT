@@ -14,9 +14,10 @@
 
 namespace Link {
 	struct Link {
-		Link(json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jHyb, json_spirit::mArray const& jLinkN, json_spirit::mArray const& jLinkA, Ut::Measurements& measurements) : 
+		Link(json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jHyb, json_spirit::mArray const& jLink, Ut::Measurements& measurements) : 
 		beta_(jNumericalParams.at("beta").get_real()), 
-		nSite_(jLinkN.size()),
+		//The Link object includes spins up and down so the number of site is half the Link array size
+		nSite_(jLink.size()/2),
 		greenEntry_(new Entry[4*nSite_*nSite_]), 
 		hybEntry_(new Entry[4*nSite_*nSite_]), 
 		multiplicity_(jHyb.size(), 0) {	
@@ -26,56 +27,33 @@ namespace Link {
 			
 			std::cout << "Reading in link file ... " << std::endl;			
 			
-			for(unsigned int i = 0; i < jLinkN.size(); ++i) {
-				json_spirit::mArray jRow = jLinkN[i].get_array();
-				if(jRow.size() != nSite_) 
+			for(unsigned int i = 0; i < jLink.size(); ++i) {
+				json_spirit::mArray jRow = jLink[i].get_array();
+				if(jRow.size() != 2*nSite_) 
 					throw(std::runtime_error("Wrong row size."));
 				
 				for(unsigned int j = 0; j < jRow.size(); ++j) {
 					std::string entry = jRow[j].get_str(); std::cout << entry << " ";						
-					
-					if(entryIndex.find(entry) == entryIndex.end())
-						throw(std::runtime_error("Entry in hybridisation not found."));
-					
 					Entry temp;
-					
-					multiplicity_[entryIndex.at(entry)] += 2;    //Spin !!!!!
-					temp.index = entryIndex.at(entry);
-					
-					temp.fact = 1.;
-					temp.arg = 1.;
-					
-					hybEntry_[i  + 2*nSite_*j] = greenEntry_[j  + 2*nSite_*i] = temp;
-					
-					temp.fact *= -1.;
-					temp.arg *= -1.;
-					
-					hybEntry_[(i + nSite_)  + 2*nSite_*(j + nSite_)] = greenEntry_[(j + nSite_)  + 2*nSite_*(i + nSite_)] = temp;
-				}
-			}
-			
-			for(unsigned int i = 0; i < jLinkA.size(); ++i) {
-				json_spirit::mArray jRow = jLinkA[i].get_array();
-				if(jRow.size() != nSite_) 
-					throw(std::runtime_error("Wrong row size."));
-				
-				for(unsigned int j = 0; j < jRow.size(); ++j) {
-					std::string entry = jRow[j].get_str(); std::cout << entry << " ";						
-					
-					Entry temp;
-					temp.fact = 1.;
-					temp.arg = 1.;
 					
 					if(entry.compare("empty")) {
 						if(entryIndex.find(entry) == entryIndex.end())
 							throw(std::runtime_error("Entry in hybridisation not found."));
-						
-						multiplicity_[entryIndex.at(entry)] += 2;    //Spin !!!!!
-						temp.index = entryIndex.at(entry);
-					} 
 					
-					hybEntry_[(i + nSite_)  + 2*nSite_*j] = greenEntry_[(j + nSite_)  + 2*nSite_*i] = temp;
-					hybEntry_[i + 2*nSite_*(j + nSite_)] = greenEntry_[j  + 2*nSite_*(i + nSite_)] = temp;
+						
+						multiplicity_[entryIndex.at(entry)] += 1;  
+						temp.index = entryIndex.at(entry);
+					}	
+					
+					temp.fact = 1.;
+					temp.arg = 1.;
+					//We need to take the opposite of the conjugate for the down spins as per the Nambu representation
+					if (i >= nSite_ && j>= nSite_){
+						temp.fact *= -1.;
+						temp.arg *= -1.;
+					}
+					
+					hybEntry_[i  + 2*nSite_*j] = greenEntry_[j  + 2*nSite_*i] = temp;
 				}
 			}
 			

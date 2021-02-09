@@ -4,7 +4,7 @@ CPPFLAGS += -DNDEBUG -DHAVE_MPI
 LDFLAGS += -L${HOME}/local/lib
 LIBS += -ljson_spirit -lopenblas -lpthread
 
-HEADERS_IS = Bath.h Utilities.h Hyb.h Green.h Link.h Trace.h MarkovChain.h MonteCarlo.h
+HEADERS_IS = Bath.h Utilities.h Hyb.h Green.h Link.h Trace.h MarkovChain.h MonteCarlo.h IO.h
 HEADERS_IS+= MPIUtilities.h  
 
 all:     IS

@@ -42,6 +42,20 @@ def run(iterations_max,files_dir,iteration_start = 0):
 			return -1
 		to_log("Calling the Impurity Solver")
 		call(["srun", os.path.join(solver_dir,"IS"),input_dir, output_dir,"params" + str(iterations)])
+        #If the srun call failed, we should retry this iteration.
+        if not os.path.exists(os.path.join(output_dir,"params" + str(iterations) + ".meas.json")):
+            return 0
+        #We need to verify that there are no nan numbers (we replace them with 0s)
+        out_file = open(os.path.join(output_dir,"params" + str(iterations) + ".meas.json"))
+        data = out_file.read()
+        out_file.close()
+        if "nan" in data:
+            to_log("A nan was present in the output file")
+        data = data.replace("nan","0")
+        out_file  = open(os.path.join(output_dir,"params" + str(iterations) + ".meas.json"),"w")
+        out_file.write(data)
+        out_file.close()
+        #We can now go on with the cycle
 		to_log("Calling the Autocoherence")
 		call([os.path.join(autocoherence_dir,"CDMFT"), output_dir, input_dir, data_dir, "params", str(iterations)])
 		to_log("end iteration " + str(iterations)  + " at: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")) + "\n")
@@ -50,15 +64,15 @@ def run(iterations_max,files_dir,iteration_start = 0):
 		call(["sbatch", "run_occupation.sh", output_dir, data_dir, "params", str(iterations)])
 		#We compute the order parameter
 		call(["./actions.py", "-a","order_parameter", "-f",os.path.basename(files_dir)])
-		return 0
+		return 1
 	number_of_tries = 0
 	while (iterations_max == -1 or iterations <= iterations_max) and number_of_tries <= max_number_of_tries:
-		if do_one_iteration(iterations) == 0:
-			iterations+=1
-		else: #The only case programmed is when input files have not been produced for the current iteration, it means something happened during the last iteration, we therefore have to retry the last one 
-			number_of_tries += 1
-			time.sleep(60)
-			iterations-=1
+		return_code = do_one_iteration(iterations)
+        iterations+=return_code
+        if return_code != 1:
+            number_of_tries += 1
+            time.sleep(60)
+
 	return 0
 
 

@@ -1,0 +1,12 @@
+[
+    ["00_up", "01_up", "11_up", "01_up","empty", "pphi", "empty", "mphi"],
+    ["01_down", "00_down", "01_down", "11_down","pphi", "empty", "mphi", "empty"],
+    ["11_up", "01_up", "00_up", "01_up","empty", "mphi", "empty", "pphi"],
+    ["01_down", "11_down", "01_down", "00_down","mphi", "empty", "pphi", "empty"],
+    ["empty", "pphi", "empty", "mphi","00_down", "01_down", "11_down", "01_down"],
+    ["pphi", "empty", "mphi", "empty","01_up", "00_up", "01_up", "11_up"],
+    ["empty", "mphi", "empty", "pphi","11_down", "01_down", "00_down", "01_down"],
+    ["mphi", "empty", "pphi", "empty","01_up", "11_up", "01_up", "00_up"]
+]
+
+
