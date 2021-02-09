@@ -2,434 +2,475 @@
 #include "newIO.h"
 #include "Patrick/IO.h"
 #include "Patrick/Plaquette/Plaquette.h"
+#include <json_spirit.h>
 
 
+/*****************************************************************************/
+/* Alters the new Hyb file that comes out of the self-consistency relations. */
+/* This is used to add constraints to the model (for example pphi and mphi are forced to be real)*/
+std::complex<double> hyb_constraints(std::string component,std::complex<double> before){
+    if(component == "pphi" || component == "mphi"){
+        before = before.real();
+    }
+    return before;
+}
+/*****************************************************************************/
+/**************************************************************************/
+/* Initializes the selfEnergy when starting a new simulation from scratch */
+/* This function may use all the parameter loaded in readParams           */
+void initial_self_energy(newIO::GenericReadFunc& readParams,int n,std::map<std::string,std::complex<double> >& component_map){
+    double const delta = readParams("delta")->getDouble();
+    double omega = (2*n + 1)*M_PI/readParams("beta")->getDouble();
+    component_map["pphi"] = delta/(1. + omega*omega);
+    component_map["mphi"] = -delta/(1. + omega*omega);
+}
+/**************************************************************************/
+/***************************************************************************/
+/* Initializes the hyb moments when starting a new simulation from scratch */
+/* This function may use all the parameter loaded in readParams            */
+void initial_Hyb_moments(IO::WriteFunc& writeHyb,newIO::GenericReadFunc& readParams){
+    double tpd = readParams("tpd")->getDouble();
+    writeHyb("00").FM() = 4*tpd*tpd; 
+    writeHyb("01").FM() = -tpd*tpd; 
+    writeHyb("11").FM() = .0;
+}
+/***************************************************************************/
+/****************************************************/
+/* Post processing of the simple double observables */
 void readScalSites(std::string obs, newIO::GenericReadFunc& readParams, int iteration,std::string outputFolder) {
-	std::ofstream file((outputFolder + obs + "Sites.dat").c_str(), std::ios_base::out | std::ios_base::app);				
-	file << iteration; 
-	
-	for(int i = 0; i < 4; ++i) {
-		std::string s = std::to_string(i); 
-		file << " " << readParams(obs + "_" + s)->getDouble();
-	}
-	
-	file << std::endl;
-	file.close();
-	
-	file.open((outputFolder + obs + ".dat").c_str(), std::ios_base::out | std::ios_base::app);
-	file << iteration << " " << readParams(obs)->getDouble() << std::endl; 
-	file.close();
+    std::ofstream file((outputFolder + obs + "Sites.dat").c_str(), std::ios_base::out | std::ios_base::app);                
+    file << iteration; 
+    
+    for(int i = 0; i < 4; ++i) {
+        std::string s = std::to_string(i); 
+        file << " " << readParams(obs + "_" + s)->getDouble();
+    }
+    
+    file << std::endl;
+    file.close();
+    
+    file.open((outputFolder + obs + ".dat").c_str(), std::ios_base::out | std::ios_base::app);
+    file << iteration << " " << readParams(obs)->getDouble() << std::endl; 
+    file.close();
+}
+/****************************************************/
+/*********************/
+/* Loads a link file */
+void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
+    std::ifstream file(outputFolder + fileName); 
+    if(file) {
+        json_spirit::mValue temp;
+        json_spirit::read(file, temp); 
+        jLink = temp.get_array();
+    }else{
+        throw std::runtime_error(outputFolder + fileName + " not found.");
+    }
+}
+/*********************/
+/************************************************************************************/
+/* Saves the data of matrix into the writeDat object that is used to save json data */
+template<class T>
+void write_Matsubara_data_to_file(IO::GenericWriteFunc<T>& writeDat, std::map<std::string,std::vector<std::pair<std::size_t,std::size_t> > >& inverse_component_map,RCuMatrix& matrix){
+    //We need to mean on all the indices included in the inverse component map
+    //For each component type (00,01,11...) , we add the contributions of all the matrix coefficients that orrespond to those components
+    std::size_t nSite_ = matrix.size()/2;
+    for (auto &p : inverse_component_map)
+    {
+        
+        std::complex<double> component_mean(0.,0.);
+        std::size_t multiplicity = 0;
+        if(p.first != "empty"){
+            for(auto& pair : p.second){
+                //Be careful of the Nambu convention
+                if(pair.first >= nSite_ && pair.second >= nSite_){
+                    component_mean += -std::conj(matrix(pair.first,pair.second));
+                }else{
+                    component_mean += matrix(pair.first,pair.second);
+                }
+                multiplicity+=1;
+            }
+            component_mean/=multiplicity;
+            writeDat(p.first).push_back(component_mean);
+        }
+    }
+}
+/************************************************************************************/
+/****************************************************************************************/
+/* Distributes the components from coponent_map to matrix according to the jLink object */
+void component_map_to_matrix(json_spirit::mArray& jLink,RCuMatrix& matrix,std::map<std::string,std::complex<double> >& component_map){
+    std::size_t nSite_ = jLink.size()/2;
+    for(std::size_t i=0;i<jLink.size();i++){
+        for(std::size_t j=0;j<jLink.size();j++){        
+            std::complex<double> this_component = component_map[jLink[i].get_array()[j].get_str()];         
+            matrix(i,j) = this_component;
+            //We need to beware to initialize the down component according to the Nambu convention
+            if(i >= nSite_ && j>= nSite_){
+                matrix(i,j) = -std::conj(matrix(i,j));
+            }
+        }
+    }
 }
 
-
+/****************************************************************************************/
+/***************************************************/
+/* This scripts does the self-consistency relations*/
+/* It also post-processes the observables, adding the sign and saving them files for future use */
 int main(int argc, char** argv)
 {
-	try {
-		if(argc != 6) 
-			throw std::runtime_error("Usage : CDMFT inputDirectory outputDirectory dataDirectory inputfilename iteration");
-		
-		std::string inputFolder = argv[1];
-		std::string outputFolder = argv[2];
-		std::string dataFolder = argv[3];
-		std::string name = argv[4];
-		int const iteration = std::atoi(argv[5]);
-		std::string filename = "";
-		std::string nodeName = "";
-		if(iteration){
-			filename = inputFolder + name + std::to_string(iteration) + ".meas.json";
-			nodeName = "Parameters";
-		}else{
-			filename = inputFolder + name + "0.json";
-		}
-		
-		newIO::GenericReadFunc readParams(filename,nodeName);
-		double const mu = readParams("mu")->getDouble();
-		double const beta = readParams("beta")->getDouble();
-		double const tpd = readParams("tpd")->getDouble();
-		double const tpp = readParams("tpp")->getDouble();
-		double tppp = tpp;
-		//We want to read tppp if it is defined in the parameter file
-		bool existstppp;
-		const newIO::GenericReader* tpppRead = readParams("tppp",existstppp);
-		if(tpppRead) {
-			std::cout << "We have tppp different than tpp" << std::endl;
-			tppp = tpppRead->getDouble();
-		}
-		//End of tppp read
-		double const ep = readParams("ep")->getDouble();
+    try {
+        if(argc != 6) 
+            throw std::runtime_error("Usage : CDMFT inputDirectory outputDirectory dataDirectory inputfilename iteration");
+        /******************************/
+        /* Initialisation of variable */
+        std::string inputFolder = argv[1];
+        std::string outputFolder = argv[2];
+        std::string dataFolder = argv[3];
+        std::string name = argv[4];
+        int const iteration = std::atoi(argv[5]);
+        std::string filename = "";
+        std::string nodeName = "";
+        if(iteration){
+            filename = inputFolder + name + std::to_string(iteration) + ".meas.json";
+            nodeName = "Parameters";
+        }else{
+            filename = inputFolder + name + "0.json";
+        }
+        
+        newIO::GenericReadFunc readParams(filename,nodeName);
+        double const mu = readParams("mu")->getDouble();
+        double const beta = readParams("beta")->getDouble();
+        double const tpd = readParams("tpd")->getDouble();
+        double const tpp = readParams("tpp")->getDouble();
+        double tppp = tpp;
+        //We want to read tppp if it is defined in the parameter file
+        bool existstppp;
+        const newIO::GenericReader* tpppRead = readParams("tppp",existstppp);
+        if(tpppRead) {
+            std::cout << "We have tppp different than tpp" << std::endl;
+            tppp = tpppRead->getDouble();
+        }
+        //End of tppp read
+        double const ep = readParams("ep")->getDouble();
 
-		std::complex<double> w = .0;
-		
-		std::vector<RCuMatrix> selfEnergy;
-		std::vector<RCuMatrix> hyb;
-		if(iteration) {
+        std::complex<double> w = .0;
+        
+        std::vector<RCuMatrix> selfEnergy;
+        std::vector<RCuMatrix> hyb;
+        /******************************/
+            
+        /*************************************************************************************************************************/
+        /* We read the Link file in order to know the structure of the self-energy and hybridation functions                     */
+        /* This part changes if you prefer having the whole Link structure as an input. Here we assume spin symmetry */
+        json_spirit::mArray jLinkA;
+        readLinkFile(readParams("LINKA")->getString(),jLinkA,outputFolder);
+        json_spirit::mArray jLinkN;
+        readLinkFile(readParams("LINKN")->getString(),jLinkN,outputFolder);
+        std::size_t nSite_ = jLinkN.size();
+        json_spirit::mArray jLink(2*nSite_);
+        //First we create the full jLink matrix from the two little ones
+        for(std::size_t i=0;i<nSite_;i++){
+            jLink[i] = json_spirit::mArray(2*nSite_);
+            jLink[i + nSite_] = json_spirit::mArray(2*nSite_);
+            for(std::size_t j=0;j<nSite_;j++){
+                jLink[i].get_array()[j] = jLinkN[i].get_array()[j].get_str();
+                jLink[i + nSite_].get_array()[j + nSite_] = jLinkN[i].get_array()[j].get_str();
+                jLink[i + nSite_].get_array()[j] = jLinkA[i].get_array()[j].get_str();
+                jLink[i].get_array()[j + nSite_] = jLinkA[i].get_array()[j].get_str();
+            }
+        }
+        /*************************************************************************************************************************/
+        /*****************************************************************/
+        /* Now we create the map object that will contain the components */
+        std::map<std::string,std::complex<double> > component_map;
+        std::map<std::string,std::vector<std::pair<std::size_t,std::size_t> > > inverse_component_map;
+        for(std::size_t i=0;i<jLink.size();i++){
+            for(std::size_t j=0;j<jLink.size();j++){
+                component_map[jLink[i].get_array()[j].get_str()] = 0;
+                if ( inverse_component_map.find(jLink[i].get_array()[j].get_str()) == inverse_component_map.end() ) {
+                    inverse_component_map[jLink[i].get_array()[j].get_str()] = std::vector<std::pair<std::size_t,std::size_t> >();
+                }
+                inverse_component_map[jLink[i].get_array()[j].get_str()].push_back(std::pair<std::size_t,std::size_t>(i,j));
+            }
+        }
+        /*****************************************************************/
 
-			newIO::GenericReadFunc readMeas(inputFolder + name + std::to_string(iteration) + ".meas.json","Measurements");
-			readMeas.addSign(readMeas("Sign")->getDouble()); //Very important, otherwise the sign is not included in the simulation
-			newIO::GenericReadFunc readHyb(outputFolder + readParams("HYB")->getString(),"");
-			
-			std::size_t const NHyb = readHyb("00")->getSize();
-			if(NHyb != readHyb("01" )->getSize()) throw std::runtime_error("01: missmatch in entry length's of the hybridisation function.");
-			if(NHyb != readHyb("11")->getSize()) throw std::runtime_error("11: missmatch in entry length's of the hybridisation function.");
-			if(NHyb != readHyb("pphi")->getSize()) throw std::runtime_error("pphi: missmatch in entry length's of the hybridisation function.");
-			if(NHyb != readHyb("mphi")->getSize()) throw std::runtime_error("mphi: missmatch in entry length's of the hybridisation function.");
-			
-			std::size_t const NGreen = readMeas("GreenI_00")->getSize();
-			
-			hyb.resize(NGreen);			
-			for(std::size_t n = 0; n < std::min(NHyb, NGreen); ++n) {
-				std::complex<double> h00 = readHyb("00")->getFunction(n);
-				std::complex<double> h01 = readHyb("01")->getFunction(n);
-				std::complex<double> h11 = readHyb("11")->getFunction(n);
-				std::complex<double> pphi = readHyb("pphi")->getFunction(n);
-				std::complex<double> mphi = readHyb("mphi")->getFunction(n);
-				
-				hyb[n]("d_0Up", "d_0Up") = h00; hyb[n]("d_0Up", "d_1Up") = h01; hyb[n]("d_0Up", "d_2Up") = h11; hyb[n]("d_0Up", "d_3Up") = h01;
-				hyb[n]("d_1Up", "d_0Up") = h01; hyb[n]("d_1Up", "d_1Up") = h00; hyb[n]("d_1Up", "d_2Up") = h01; hyb[n]("d_1Up", "d_3Up") = h11;
-				hyb[n]("d_2Up", "d_0Up") = h11; hyb[n]("d_2Up", "d_1Up") = h01; hyb[n]("d_2Up", "d_2Up") = h00; hyb[n]("d_2Up", "d_3Up") = h01;
-				hyb[n]("d_3Up", "d_0Up") = h01; hyb[n]("d_3Up", "d_1Up") = h11; hyb[n]("d_3Up", "d_2Up") = h01; hyb[n]("d_3Up", "d_3Up") = h00;
-				
-				hyb[n]("d_0Down", "d_0Down") = -std::conj(h00); hyb[n]("d_0Down", "d_1Down") = -std::conj(h01); hyb[n]("d_0Down", "d_2Down") = -std::conj(h11); hyb[n]("d_0Down", "d_3Down") = -std::conj(h01);
-				hyb[n]("d_1Down", "d_0Down") = -std::conj(h01); hyb[n]("d_1Down", "d_1Down") = -std::conj(h00); hyb[n]("d_1Down", "d_2Down") = -std::conj(h01); hyb[n]("d_1Down", "d_3Down") = -std::conj(h11);
-				hyb[n]("d_2Down", "d_0Down") = -std::conj(h11); hyb[n]("d_2Down", "d_1Down") = -std::conj(h01); hyb[n]("d_2Down", "d_2Down") = -std::conj(h00); hyb[n]("d_2Down", "d_3Down") = -std::conj(h01);
-				hyb[n]("d_3Down", "d_0Down") = -std::conj(h01); hyb[n]("d_3Down", "d_1Down") = -std::conj(h11); hyb[n]("d_3Down", "d_2Down") = -std::conj(h01); hyb[n]("d_3Down", "d_3Down") = -std::conj(h00);
-				
-				hyb[n]("d_0Up", "d_1Down") = 
-				hyb[n]("d_0Down", "d_1Up") = 
-				hyb[n]("d_1Up", "d_0Down") = 
-				hyb[n]("d_1Down", "d_0Up") = 
-				hyb[n]("d_2Up", "d_3Down") = 
-				hyb[n]("d_2Down", "d_3Up") =
-				hyb[n]("d_3Up", "d_2Down") = 
-				hyb[n]("d_3Down", "d_2Up") = pphi;
-				
-				
-				hyb[n]("d_1Up", "d_2Down") = 
-				hyb[n]("d_1Down", "d_2Up") = 
-				hyb[n]("d_2Up", "d_1Down") = 
-				hyb[n]("d_2Down", "d_1Up") = 
-				hyb[n]("d_3Up", "d_0Down") = 
-				hyb[n]("d_3Down", "d_0Up") = 
-				hyb[n]("d_0Up", "d_3Down") = 
-				hyb[n]("d_0Down", "d_3Up") = mphi; 
-				
-			}
-			
-			for(std::size_t n = std::min(NHyb, NGreen); n < NGreen; ++n) {
-				double FM00 = readHyb("00")->getFM();
-				double FM01 = readHyb("01")->getFM();
-				double FM11 = readHyb("11")->getFM();
-				
-				std::complex<double> iomega(.0, M_PI*(2*n + 1)/beta);
-				hyb[n]("d_0Up", "d_0Up") = FM00/iomega; hyb[n]("d_0Up", "d_1Up") = FM01/iomega; hyb[n]("d_0Up", "d_2Up") = FM11/iomega; hyb[n]("d_0Up", "d_3Up") = FM01/iomega;
-				hyb[n]("d_1Up", "d_0Up") = FM01/iomega; hyb[n]("d_1Up", "d_1Up") = FM00/iomega; hyb[n]("d_1Up", "d_2Up") = FM01/iomega; hyb[n]("d_1Up", "d_3Up") = FM11/iomega;
-				hyb[n]("d_2Up", "d_0Up") = FM11/iomega; hyb[n]("d_2Up", "d_1Up") = FM01/iomega; hyb[n]("d_2Up", "d_2Up") = FM00/iomega; hyb[n]("d_2Up", "d_3Up") = FM01/iomega;
-				hyb[n]("d_3Up", "d_0Up") = FM01/iomega; hyb[n]("d_3Up", "d_1Up") = FM11/iomega; hyb[n]("d_3Up", "d_2Up") = FM01/iomega; hyb[n]("d_3Up", "d_3Up") = FM00/iomega;
-				
-				hyb[n]("d_0Down", "d_0Down") = -std::conj(FM00/iomega); hyb[n]("d_0Down", "d_1Down") = -std::conj(FM01/iomega); hyb[n]("d_0Down", "d_2Down") = -std::conj(FM11/iomega); hyb[n]("d_0Down", "d_3Down") = -std::conj(FM01/iomega);
-				hyb[n]("d_1Down", "d_0Down") = -std::conj(FM01/iomega); hyb[n]("d_1Down", "d_1Down") = -std::conj(FM00/iomega); hyb[n]("d_1Down", "d_2Down") = -std::conj(FM01/iomega); hyb[n]("d_1Down", "d_3Down") = -std::conj(FM11/iomega);
-				hyb[n]("d_2Down", "d_0Down") = -std::conj(FM11/iomega); hyb[n]("d_2Down", "d_1Down") = -std::conj(FM01/iomega); hyb[n]("d_2Down", "d_2Down") = -std::conj(FM00/iomega); hyb[n]("d_2Down", "d_3Down") = -std::conj(FM01/iomega);
-				hyb[n]("d_3Down", "d_0Down") = -std::conj(FM01/iomega); hyb[n]("d_3Down", "d_1Down") = -std::conj(FM11/iomega); hyb[n]("d_3Down", "d_2Down") = -std::conj(FM01/iomega); hyb[n]("d_3Down", "d_3Down") = -std::conj(FM00/iomega);
-			}
 
-			std::vector<RCuMatrix> green(NGreen);
-			for(std::size_t n = 0; n < NGreen; ++n) {
-				std::complex<double> g00 = std::complex<double>(readMeas("GreenR_00")->getDouble(n),readMeas("GreenI_00")->getDouble(n));
-				std::complex<double> g01 = std::complex<double>(readMeas("GreenR_01")->getDouble(n),readMeas("GreenI_01")->getDouble(n));
-				std::complex<double> g11 = std::complex<double>(readMeas("GreenR_11")->getDouble(n),readMeas("GreenI_11")->getDouble(n));
-				std::complex<double> pphi = std::complex<double>(readMeas("GreenR_pphi")->getDouble(n),readMeas("GreenI_pphi")->getDouble(n));
-				std::complex<double> mphi = std::complex<double>(readMeas("GreenR_mphi")->getDouble(n),readMeas("GreenI_mphi")->getDouble(n));
-				
-				
-				green[n]("d_0Up", "d_0Up") = g00; green[n]("d_0Up", "d_1Up") = g01; green[n]("d_0Up", "d_2Up") = g11; green[n]("d_0Up", "d_3Up") = g01;
-				green[n]("d_1Up", "d_0Up") = g01; green[n]("d_1Up", "d_1Up") = g00; green[n]("d_1Up", "d_2Up") = g01; green[n]("d_1Up", "d_3Up") = g11;
-				green[n]("d_2Up", "d_0Up") = g11; green[n]("d_2Up", "d_1Up") = g01; green[n]("d_2Up", "d_2Up") = g00; green[n]("d_2Up", "d_3Up") = g01;
-				green[n]("d_3Up", "d_0Up") = g01; green[n]("d_3Up", "d_1Up") = g11; green[n]("d_3Up", "d_2Up") = g01; green[n]("d_3Up", "d_3Up") = g00;	
-				
-				green[n]("d_0Down", "d_0Down") = -std::conj(g00); green[n]("d_0Down", "d_1Down") = -std::conj(g01); green[n]("d_0Down", "d_2Down") = -std::conj(g11); green[n]("d_0Down", "d_3Down") = -std::conj(g01);
-				green[n]("d_1Down", "d_0Down") = -std::conj(g01); green[n]("d_1Down", "d_1Down") = -std::conj(g00); green[n]("d_1Down", "d_2Down") = -std::conj(g01); green[n]("d_1Down", "d_3Down") = -std::conj(g11);
-				green[n]("d_2Down", "d_0Down") = -std::conj(g11); green[n]("d_2Down", "d_1Down") = -std::conj(g01); green[n]("d_2Down", "d_2Down") = -std::conj(g00); green[n]("d_2Down", "d_3Down") = -std::conj(g01);
-				green[n]("d_3Down", "d_0Down") = -std::conj(g01); green[n]("d_3Down", "d_1Down") = -std::conj(g11); green[n]("d_3Down", "d_2Down") = -std::conj(g01); green[n]("d_3Down", "d_3Down") = -std::conj(g00);	
-			
-			    green[n]("d_0Up", "d_1Down") = 
-				green[n]("d_0Down", "d_1Up") = 
-				green[n]("d_1Up", "d_0Down") = 
-				green[n]("d_1Down", "d_0Up") = 
-				green[n]("d_2Up", "d_3Down") = 
-				green[n]("d_2Down", "d_3Up") =
-				green[n]("d_3Up", "d_2Down") = 
-				green[n]("d_3Down", "d_2Up") = pphi;
-				
-				
-				green[n]("d_1Up", "d_2Down") = 
-				green[n]("d_1Down", "d_2Up") = 
-				green[n]("d_2Up", "d_1Down") = 
-				green[n]("d_2Down", "d_1Up") = 
-				green[n]("d_3Up", "d_0Down") = 
-				green[n]("d_3Down", "d_0Up") = 
-				green[n]("d_0Up", "d_3Down") = 
-				green[n]("d_0Down", "d_3Up") = mphi;
-			}
-			
-			for(std::size_t n = 0; n < NGreen; ++n) {
-				std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
-				
-				RCuMatrix temp;
-				temp(0, 0) = temp(1, 1) = temp(2, 2) = temp(3, 3) = iomega + mu;
-				temp(4, 4) = temp(5, 5) = temp(6, 6) = temp(7, 7) = -std::conj(iomega + mu);
 
-				temp -= hyb[n]; 	
-				temp -= green[n].inv();
-				
-				selfEnergy.push_back(temp);
-			}
+        IO::WriteFunc writeThisHyb;
+        IO::WriteFunc writeNextHyb;
+        IO::WriteDat writeSelf;
+        IO::WriteDat writeGreen;
 
-			
-			bool existsn;
-			const newIO::GenericReader* nRead = readMeas("n",existsn);
-			if(nRead) {
-				double const S = readMeas("S")->getDouble();
-				readParams("mu")->setDouble(mu - S*(readMeas("N")->getDouble() - nRead->getDouble()));
-			}
-			
-			{
-				std::ofstream file(dataFolder + "sign.dat", std::ios_base::out | std::ios_base::app);
-				file << iteration << " " << readMeas("Sign")->getDouble() << std::endl;
-				file.close();
-			}
-			
-			readScalSites("N", readMeas, iteration,dataFolder);
-			readScalSites("k", readMeas, iteration,dataFolder);
-			readScalSites("Sz", readMeas, iteration,dataFolder);
-			readScalSites("D", readMeas, iteration,dataFolder);
-			readScalSites("Chi0", readMeas, iteration,dataFolder);
-						
-			{
-				
-			    std::stringstream name; name << dataFolder << "pK" << iteration << ".dat";
-			    std::ofstream file(name.str().c_str(), std::ios_base::out);
-			    
-				const newIO::GenericReader* pK_read = readMeas("pK");
+        if(iteration) {
 
-			    for(unsigned int k = 0; k < pK_read->getSize(); ++k) 
-			    	file << k << " " << pK_read->getDouble(k) << std::endl;
-				
-			    file.close();
-			}
-			
-			if(readParams("EObs")->getInt() > .0) {
-				
-				{
-					std::stringstream name; name << dataFolder << "ChiFullSites" << iteration << ".dat";
-					std::ofstream file(name.str().c_str());
-					
-					for(unsigned int n = 0; n < readMeas("Chi")->getSize(); ++n) {
-						file << 2*n*M_PI/beta;
-						for(int i = 0; i < 4; ++i) {
-							std::string s = std::to_string(i);
-							file << " " << readMeas("Chi_" + s)->getDouble(n);
-						}
-						file << std::endl;
-					}
-					
-					file.close();
-				}
-				
-				{
-					std::stringstream name; name << dataFolder << "ChiFull" << iteration << ".dat";
-					std::ofstream file(name.str().c_str());
-				
-					const newIO::GenericReader* Chi_read = readMeas("Chi");
-				    for(unsigned int n = 0; n < Chi_read->getSize(); ++n){
-				    		file << 2*n*M_PI/beta << " " << Chi_read->getDouble(n) << std::endl;
-				    }
-					file.close();
-				}				
-			};
-			
-			w = std::complex<double>(readParams("weightR")->getDouble(),readParams("weightI")->getDouble());
-		} else {
-			/*
-			unsigned int const NSelf = beta*static_cast<double>(params["EGreen"])/(2*M_PI) + 1;
-			
-			std::ifstream selfFile("self.dat");
+            newIO::GenericReadFunc readMeas(inputFolder + name + std::to_string(iteration) + ".meas.json","Measurements");
+            readMeas.addSign(readMeas("Sign")->getDouble()); //Very important, otherwise the sign is not included in the simulation
+            newIO::GenericReadFunc readHyb(outputFolder + readParams("HYB")->getString(),"");
+            //We have to read all the Hyb components into variables so take them from LinkN.json
+            //For that we need a table that stores the LinkN.json structure
+            
+            std::size_t NHyb = 0;
+            std::size_t NGreen = 0;
+            for (auto &p : component_map)
+            {
+                if(p.first != "empty"){ //We don't read the empty component
+                    if(NHyb == 0){
+                        NHyb = readHyb(p.first)->getSize();
+                        NGreen = readMeas("GreenI_" + p.first)->getSize();
+                    }else if(NHyb != readHyb(p.first)->getSize()){
+                        throw std::runtime_error(p.first + ": missmatch in entry length's of the hybridisation function.");
+                    }else if(NGreen != readMeas("GreenI_" + p.first)->getSize()){
+                        throw std::runtime_error(p.first + ": missmatch in entry length's of the measured Green's function function.");
+                    }
+                }
+            } 
+            
+            hyb.resize(NGreen); 
+            /************************************************/
+            /**** We initialize the Hybridization object from data.  ******/
+            for(std::size_t n = 0; n < std::min(NHyb, NGreen); ++n) {
+                //We iterate over all components and read them from the Hyb file
+                for (auto &p : component_map)
+                {
+                    if(p.first != "empty"){ //We don't read the empty component
+                        p.second = readHyb(p.first)->getFunction(n);
+                    }
+                } 
+                //We initialize the hybridization matrix according to the Link file.
+                component_map_to_matrix(jLink,hyb[n],component_map);
+            }
+            /*** End initialisation from Matsubara data *****/
+            /************************************************/
+            /**************************************************************************************/
+            /**** We initialize the Hyb object if the size doesn't match the Green's functions ****/
+            /*** We use only the first moment expansion of the Hybridization for those components (this is usually a good starting point for the cycle) ***/
+            for (auto &p : component_map)
+            {
+                if(p.first != "empty"){ //We don't read the empty component
+                    p.second = readHyb(p.first)->getFM();
+                }
+            } 
+            for(std::size_t n = std::min(NHyb, NGreen); n < NGreen; ++n) {
+                std::complex<double> iomega(.0, M_PI*(2*n + 1)/beta);
+                std::map<std::string,std::complex<double> > component_map_divided_by_iomega;
+                for (auto &p : component_map)
+                {
+                    if(p.first != "empty"){ //We don't read the empty component
+                        component_map_divided_by_iomega[p.first] = p.second/iomega;
+                    }
+                } 
+                component_map_to_matrix(jLink,hyb[n],component_map_divided_by_iomega);
+            }
+            /*** End initialisation from Moments *****/
+            /*****************************************/
+            /********************************************************************************/
+            /* We intialize the cluster Green's function from the Impurity Solver solution **/
+            std::vector<RCuMatrix> green(NGreen);
+            for(std::size_t n = 0; n < NGreen; ++n) {
+                for (auto &p : component_map)
+                {
+                    if(p.first != "empty"){ //We don't read the empty component
+                        p.second = std::complex<double>(readMeas("GreenR_" + p.first)->getDouble(n),readMeas("GreenI_" + p.first)->getDouble(n));
+                    }
+                } 
+                component_map_to_matrix(jLink,green[n],component_map);
+            }
+            /* End Initialization of the cluster Green's function */
+            /******************************************************/
+            /*****************************/
+            /* We compute the selfEnergy */
+            for(std::size_t n = 0; n < NGreen; ++n) {
+                std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
+                
+                RCuMatrix temp;
+                for(std::size_t i = 0;i<nSite_;i++){
+                    temp(i,i) = iomega + mu;
+                    temp(i + nSite_,i + nSite_) = -std::conj(iomega + mu);
+                }
 
-			std::string dummy;
-			selfEnergy.resize(NSelf);
-			for(std::size_t n = 0; n < NSelf; ++n) {
-				std::complex<double> s00;
-				std::complex<double> s01;
-				std::complex<double> s11;
-				std::complex<double> pphi;
-				std::complex<double> mphi;
-				
-				selfFile >> dummy >> s00.real() >> s00.imag() >> s01.real() >> s01.imag() >> s11.real() >> s11.imag() >> pphi.real() >> pphi.imag() >> mphi.real() >> mphi.imag();
-				
-				selfEnergy[n]("d_0Up", "d_0Up") = s00; selfEnergy[n]("d_0Up", "d_1Up") = s01; selfEnergy[n]("d_0Up", "d_2Up") = s11; selfEnergy[n]("d_0Up", "d_3Up") = s01;
-				selfEnergy[n]("d_1Up", "d_0Up") = s01; selfEnergy[n]("d_1Up", "d_1Up") = s00; selfEnergy[n]("d_1Up", "d_2Up") = s01; selfEnergy[n]("d_1Up", "d_3Up") = s11;
-				selfEnergy[n]("d_2Up", "d_0Up") = s11; selfEnergy[n]("d_2Up", "d_1Up") = s01; selfEnergy[n]("d_2Up", "d_2Up") = s00; selfEnergy[n]("d_2Up", "d_3Up") = s01;
-				selfEnergy[n]("d_3Up", "d_0Up") = s01; selfEnergy[n]("d_3Up", "d_1Up") = s11; selfEnergy[n]("d_3Up", "d_2Up") = s01; selfEnergy[n]("d_3Up", "d_3Up") = s00;	
-				
-				selfEnergy[n]("d_0Down", "d_0Down") = -std::conj(s00); selfEnergy[n]("d_0Down", "d_1Down") = -std::conj(s01); selfEnergy[n]("d_0Down", "d_2Down") = -std::conj(s11); selfEnergy[n]("d_0Down", "d_3Down") = -std::conj(s01);
-				selfEnergy[n]("d_1Down", "d_0Down") = -std::conj(s01); selfEnergy[n]("d_1Down", "d_1Down") = -std::conj(s00); selfEnergy[n]("d_1Down", "d_2Down") = -std::conj(s01); selfEnergy[n]("d_1Down", "d_3Down") = -std::conj(s11);
-				selfEnergy[n]("d_2Down", "d_0Down") = -std::conj(s11); selfEnergy[n]("d_2Down", "d_1Down") = -std::conj(s01); selfEnergy[n]("d_2Down", "d_2Down") = -std::conj(s00); selfEnergy[n]("d_2Down", "d_3Down") = -std::conj(s01);
-				selfEnergy[n]("d_3Down", "d_0Down") = -std::conj(s01); selfEnergy[n]("d_3Down", "d_1Down") = -std::conj(s11); selfEnergy[n]("d_3Down", "d_2Down") = -std::conj(s01); selfEnergy[n]("d_3Down", "d_3Down") = -std::conj(s00);	
-				
-				selfEnergy[n]("d_0Up", "d_1Down") = 
-				selfEnergy[n]("d_0Down", "d_1Up") = 
-				selfEnergy[n]("d_1Up", "d_0Down") = 
-				selfEnergy[n]("d_1Down", "d_0Up") = 
-				selfEnergy[n]("d_2Up", "d_3Down") = 
-				selfEnergy[n]("d_2Down", "d_3Up") =
-				selfEnergy[n]("d_3Up", "d_2Down") = 
-				selfEnergy[n]("d_3Down", "d_2Up") = pphi;
-				
-				selfEnergy[n]("d_1Up", "d_2Down") = 
-				selfEnergy[n]("d_1Down", "d_2Up") = 
-				selfEnergy[n]("d_2Up", "d_1Down") = 
-				selfEnergy[n]("d_2Down", "d_1Up") = 
-				selfEnergy[n]("d_3Up", "d_0Down") = 
-				selfEnergy[n]("d_3Down", "d_0Up") = 
-				selfEnergy[n]("d_0Up", "d_3Down") = 
-				selfEnergy[n]("d_0Down", "d_3Up") = mphi;
-			}
-			
-			selfFile.close();
-			*/
-			
-			unsigned int const NSelf = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
-			
-			std::ifstream selfFile(dataFolder + "self.dat");
+                temp -= hyb[n];     
+                temp -= green[n].inv();
+                
+                selfEnergy.push_back(temp);
+            }
+            /* End compute selfEnergy */
+            /**************************/
+            /**************************************/
+            /* We read the observables into files */
+            bool existsn;
+            const newIO::GenericReader* nRead = readMeas("n",existsn);
+            if(nRead) {
+                double const S = readMeas("S")->getDouble();
+                readParams("mu")->setDouble(mu - S*(readMeas("N")->getDouble() - nRead->getDouble()));
+            }
+            
+            {
+                std::ofstream file(dataFolder + "sign.dat", std::ios_base::out | std::ios_base::app);
+                file << iteration << " " << readMeas("Sign")->getDouble() << std::endl;
+                file.close();
+            }
+            
+            readScalSites("N", readMeas, iteration,dataFolder);
+            readScalSites("k", readMeas, iteration,dataFolder);
+            readScalSites("Sz", readMeas, iteration,dataFolder);
+            readScalSites("D", readMeas, iteration,dataFolder);
+            readScalSites("Chi0", readMeas, iteration,dataFolder);
+                        
+            {
+                
+                std::stringstream name; name << dataFolder << "pK" << iteration << ".dat";
+                std::ofstream file(name.str().c_str(), std::ios_base::out);
+                
+                const newIO::GenericReader* pK_read = readMeas("pK");
 
-			std::string dummy;
-			selfEnergy.resize(NSelf);
-			for(std::size_t n = 0; n < NSelf; ++n) {
-				double s00_R, s00_I, s01_R, s01_I, s11_R, s11_I,pphi_R, pphi_I, mphi_R, mphi_I;
-				if(selfFile.good())  /* USING A COMPUTED ANORMAL SELFENERGY */
-				{
-					selfFile >> dummy >> s00_R >> s00_I >> s01_R >> s01_I >> s11_R >> s11_I >> pphi_R >> pphi_I >> mphi_R >> mphi_I;
-				}else /* USING A CUSTOM ANORMAL SELFENERGY */
-				{
-					double const delta = readParams("delta")->getDouble();
-					double omega = (2*n + 1)*M_PI/beta;
-					pphi_R = delta/(1. + omega*omega);
-					mphi_R = -delta/(1. + omega*omega);
-				}
-					std::complex<double> s00(s00_R, s00_I);
-					std::complex<double> s01(s01_R, s01_I);
-					std::complex<double> s11(s11_R, s11_I);
-					std::complex<double> pphi(pphi_R, pphi_I);
-					std::complex<double> mphi(mphi_R, mphi_I);
+                for(unsigned int k = 0; k < pK_read->getSize(); ++k) 
+                    file << k << " " << pK_read->getDouble(k) << std::endl;
+                
+                file.close();
+            }
+            
+            if(readParams("EObs")->getInt() > .0) {
+                
+                {
+                    std::stringstream name; name << dataFolder << "ChiFullSites" << iteration << ".dat";
+                    std::ofstream file(name.str().c_str());
+                    
+                    for(unsigned int n = 0; n < readMeas("Chi")->getSize(); ++n) {
+                        file << 2*n*M_PI/beta;
+                        for(int i = 0; i < 4; ++i) {
+                            std::string s = std::to_string(i);
+                            file << " " << readMeas("Chi_" + s)->getDouble(n);
+                        }
+                        file << std::endl;
+                    }
+                    
+                    file.close();
+                }
+                
+                {
+                    std::stringstream name; name << dataFolder << "ChiFull" << iteration << ".dat";
+                    std::ofstream file(name.str().c_str());
+                
+                    const newIO::GenericReader* Chi_read = readMeas("Chi");
+                    for(unsigned int n = 0; n < Chi_read->getSize(); ++n){
+                            file << 2*n*M_PI/beta << " " << Chi_read->getDouble(n) << std::endl;
+                    }
+                    file.close();
+                }               
+            };
+            /* End Reading observables */
+            /***************************/
 
-			/**/
-				selfEnergy[n]("d_0Up", "d_0Up") = s00; selfEnergy[n]("d_0Up", "d_1Up") = s01; selfEnergy[n]("d_0Up", "d_2Up") = s11; selfEnergy[n]("d_0Up", "d_3Up") = s01;
-				selfEnergy[n]("d_1Up", "d_0Up") = s01; selfEnergy[n]("d_1Up", "d_1Up") = s00; selfEnergy[n]("d_1Up", "d_2Up") = s01; selfEnergy[n]("d_1Up", "d_3Up") = s11;
-				selfEnergy[n]("d_2Up", "d_0Up") = s11; selfEnergy[n]("d_2Up", "d_1Up") = s01; selfEnergy[n]("d_2Up", "d_2Up") = s00; selfEnergy[n]("d_2Up", "d_3Up") = s01;
-				selfEnergy[n]("d_3Up", "d_0Up") = s01; selfEnergy[n]("d_3Up", "d_1Up") = s11; selfEnergy[n]("d_3Up", "d_2Up") = s01; selfEnergy[n]("d_3Up", "d_3Up") = s00;	
-				
-				selfEnergy[n]("d_0Down", "d_0Down") = -std::conj(s00); selfEnergy[n]("d_0Down", "d_1Down") = -std::conj(s01); selfEnergy[n]("d_0Down", "d_2Down") = -std::conj(s11); selfEnergy[n]("d_0Down", "d_3Down") = -std::conj(s01);
-				selfEnergy[n]("d_1Down", "d_0Down") = -std::conj(s01); selfEnergy[n]("d_1Down", "d_1Down") = -std::conj(s00); selfEnergy[n]("d_1Down", "d_2Down") = -std::conj(s01); selfEnergy[n]("d_1Down", "d_3Down") = -std::conj(s11);
-				selfEnergy[n]("d_2Down", "d_0Down") = -std::conj(s11); selfEnergy[n]("d_2Down", "d_1Down") = -std::conj(s01); selfEnergy[n]("d_2Down", "d_2Down") = -std::conj(s00); selfEnergy[n]("d_2Down", "d_3Down") = -std::conj(s01);
-				selfEnergy[n]("d_3Down", "d_0Down") = -std::conj(s01); selfEnergy[n]("d_3Down", "d_1Down") = -std::conj(s11); selfEnergy[n]("d_3Down", "d_2Down") = -std::conj(s01); selfEnergy[n]("d_3Down", "d_3Down") = -std::conj(s00);	
+            /*************************************************/
+            /* We copy the first moment to the next Hyb file */
+            for (auto &p : inverse_component_map)
+            {
+                if(p.first != "empty"){
+                    writeNextHyb(p.first).FM() = readHyb(p.first)->getFM();
+                }
+            }
+            /************************************************/
 
-				selfEnergy[n]("d_0Up", "d_1Down") = 
-				selfEnergy[n]("d_0Down", "d_1Up") = 
-				selfEnergy[n]("d_1Up", "d_0Down") = 
-				selfEnergy[n]("d_1Down", "d_0Up") = 
-				selfEnergy[n]("d_2Up", "d_3Down") = 
-				selfEnergy[n]("d_2Down", "d_3Up") =
-				selfEnergy[n]("d_3Up", "d_2Down") = 
-				selfEnergy[n]("d_3Down", "d_2Up") = pphi;
-								
-				selfEnergy[n]("d_1Up", "d_2Down") = 
-				selfEnergy[n]("d_1Down", "d_2Up") = 
-				selfEnergy[n]("d_2Up", "d_1Down") = 
-				selfEnergy[n]("d_2Down", "d_1Up") = 
-				selfEnergy[n]("d_3Up", "d_0Down") = 
-				selfEnergy[n]("d_3Down", "d_0Up") = 
-				selfEnergy[n]("d_0Up", "d_3Down") = 
-				selfEnergy[n]("d_0Down", "d_3Up") = mphi;
-			}
-			
-			hyb.resize(selfEnergy.size());
-			w = .0;			
-		}
 
-		IO::WriteFunc writeHyb;
-					
-		std::ofstream selfFile((dataFolder + "self" + std::to_string(iteration) + ".dat").c_str());
-		std::ofstream greenFile((dataFolder + "green" + std::to_string(iteration) + ".dat").c_str());
-		std::ofstream hybFile((dataFolder + "hyb" + std::to_string(iteration) + ".dat").c_str());
-		
-		Int::EulerMaclaurin2D<RCuMatrix> integrator(1.e-10, 4, 12);
-		
-		for(std::size_t n = 0; n < selfEnergy.size(); ++n) {
-			
-			std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
+        } else {
+            /******************************************************************************************************/
+            /* Initialization of the self-energy using a self0.dat file or an the initialize_self_energy function */
+            //We initialize the simulation using a self file or an empty self-energy
+            unsigned int const NSelf = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
+            
+            newIO::GenericReadFunc readSelf(dataFolder + "self0.json","");
 
-			selfFile << iomega.imag() << " " 
-			         << selfEnergy[n]("d_0Up", "d_0Up").real() << " " << selfEnergy[n]("d_0Up", "d_0Up").imag() << " " 
-			         << selfEnergy[n]("d_0Up", "d_1Up").real() << " " << selfEnergy[n]("d_0Up", "d_1Up").imag() << " " 
-			         << selfEnergy[n]("d_0Up", "d_2Up").real() << " " << selfEnergy[n]("d_0Up", "d_2Up").imag() << " "
-			         << selfEnergy[n]("d_0Up", "d_1Down").real() << " " << selfEnergy[n]("d_0Up", "d_1Down").imag() << " "
-			         << selfEnergy[n]("d_1Up", "d_2Down").real() << " " << selfEnergy[n]("d_1Up", "d_2Down").imag() << std::endl;
-			
-			RCuLatticeGreen latticeGreenRCu(iomega + mu, tpd, tpp, tppp, ep, selfEnergy[n]); 
-			RCuMatrix greenNext = integrator(latticeGreenRCu, M_PI/2., M_PI/2.);
+            std::string dummy;
+            selfEnergy.resize(NSelf);
+            for(std::size_t n = 0; n < NSelf; ++n) {
+                /*******************************************/
+                /* We try loading the selfEnergy file */
+                if(readSelf.good())  
+                {
+                    for (auto &p : component_map)
+                    {
+                        if(p.first != "empty"){ //We don't read the empty component
+                            p.second = readSelf(p.first)->getFunction(n);
+                        }
+                    } 
+                }else{
+                    /*******************************************************************/
+                    /* If this does not work, we initialize using this custom function */
+                    initial_self_energy(readParams,n,component_map);
+                    /*******************************************************************/
+                }
+                /*******************************************/
+                component_map_to_matrix(jLink,selfEnergy[n],component_map);
+            }
+            
+            hyb.resize(selfEnergy.size());
+            initial_Hyb_moments(writeNextHyb,readParams);
+            w = .0;         
+        }
+        /************************************************************************************************/
+        /* Now we compute the next cluster Green's function and from that, the next hybridation function */
+        Int::EulerMaclaurin2D<RCuMatrix> integrator(1.e-10, 4, 12);
+        for(std::size_t n = 0; n < selfEnergy.size(); ++n) {
+            
+            std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
+        
+            write_Matsubara_data_to_file(writeSelf,inverse_component_map,selfEnergy[n]);
+            
+            RCuLatticeGreen latticeGreenRCu(iomega + mu, tpd, tpp, tppp, ep, selfEnergy[n]); 
+            RCuMatrix greenNext = integrator(latticeGreenRCu, M_PI/2., M_PI/2.);
 
-			greenFile << iomega.imag() << " "  
-			          << greenNext("d_0Up", "d_0Up").real() << " " << greenNext("d_0Up", "d_0Up").imag() << " " 
-			          << greenNext("d_0Up", "d_1Up").real() << " " << greenNext("d_0Up", "d_1Up").imag() << " " 
-			          << greenNext("d_0Up", "d_2Up").real() << " " << greenNext("d_0Up", "d_2Up").imag() << " " 
-			          << greenNext("d_0Up", "d_1Down").real() << " " << greenNext("d_0Up", "d_1Down").imag() << " "
-			          << greenNext("d_1Up", "d_2Down").real() << " " << greenNext("d_1Up", "d_2Down").imag() << std::endl;
-			
-			RCuMatrix hybNext;
-			hybNext(0, 0) = hybNext(1, 1) = hybNext(2, 2) = hybNext(3, 3) = iomega + mu;
-			hybNext(4, 4) = hybNext(5, 5) = hybNext(6, 6) = hybNext(7, 7) = -std::conj(iomega + mu);
-			hybNext -= selfEnergy[n];
-			hybNext -= greenNext.inv();
+            write_Matsubara_data_to_file(writeGreen,inverse_component_map,greenNext);
+            
+            RCuMatrix hybNext;
+            for(std::size_t i = 0;i<nSite_;i++){
+                hybNext(i,i) = iomega + mu;
+                hybNext(i + nSite_,i + nSite_) = -std::conj(iomega + mu);
+            }
+            hybNext -= selfEnergy[n];
+            hybNext -= greenNext.inv();
+            /**********************************************************/
+            /* Finally we save the data for the output Hyb.json file. */
+            /* We need to do it once for the old Hyb file and one for the new in order to take a linear combination of both */
+            write_Matsubara_data_to_file(writeThisHyb,inverse_component_map,hyb[n]);
+            write_Matsubara_data_to_file(writeNextHyb,inverse_component_map,hybNext);
+            /**********************************************************/
+        }
+        /************************************************************************************************/
+        /************************************************************************/
+        /*** Now we need to take the w weight into account for the next Hyb *****/
+        w = std::complex<double>(readParams("weightR")->getDouble(),readParams("weightI")->getDouble());
+        std::map<std::string, Hyb::Write>& hybNextMap = writeNextHyb.getMap();
+        for (auto &p : hybNextMap){
+            for(std::size_t i = 0;i<p.second.size();i++){
+                std::complex<double> intermediate = (1. - w)*p.second[i] + w*writeThisHyb(p.first)[i];
+                p.second[i] = hyb_constraints(p.first,intermediate);
+            }
+        }
+        /************************************************************************/
+        /**************************************/
+        /* We save the self and green objects */
+        writeSelf.write(beta,dataFolder + "self" + std::to_string(iteration) + ".json");
+        writeGreen.write(beta,dataFolder + "green" + std::to_string(iteration) + ".json");
+        /**************************************/
 
-			hybFile << iomega.imag() << " " 
-			        << hybNext("d_0Up", "d_0Up").real() << " " << hybNext("d_0Up", "d_0Up").imag() << " " 
-			        << hybNext("d_0Up", "d_1Up").real() << " " << hybNext("d_0Up", "d_1Up").imag() << " " 
-			        << hybNext("d_0Up", "d_2Up").real() << " " << hybNext("d_0Up", "d_2Up").imag() << " "
-			        << hybNext("d_0Up", "d_1Down").real() << " " << hybNext("d_0Up", "d_1Down").imag() << " "
-			        << hybNext("d_1Up", "d_2Down").real() << " " << hybNext("d_1Up", "d_2Down").imag() << std::endl;
-			
-			writeHyb("00").push_back((1. - w)*hybNext("d_0Up", "d_0Up") + w*hyb[n]("d_0Up", "d_0Up")); 
-			writeHyb("01").push_back((1. - w)*hybNext("d_0Up", "d_1Up") + w*hyb[n]("d_0Up", "d_1Up")); 
-			writeHyb("11").push_back((1. - w)*hybNext("d_0Up", "d_2Up") + w*hyb[n]("d_0Up", "d_2Up"));
-			writeHyb("pphi").push_back(((1. - w)*hybNext("d_0Up", "d_1Down") + w*hyb[n]("d_0Up", "d_1Down")).real());
-			writeHyb("mphi").push_back(((1. - w)*hybNext("d_1Up", "d_2Down") + w*hyb[n]("d_1Up", "d_2Down")).real());
-		}
-		
-		selfFile.close();
-		greenFile.close();
-		hybFile.close();
-
-		writeHyb("00").FM() = 4*tpd*tpd; 
-		writeHyb("01").FM() = -tpd*tpd; 
-		writeHyb("11").FM() = .0; 
-				
-		readParams("HYB")->setString("Hyb" + std::to_string(iteration + 1) + ".json");
-		writeHyb.write(beta,outputFolder + "Hyb" + std::to_string(iteration + 1) + ".json");
-
-		readParams.write((outputFolder + "params" +  std::to_string(iteration + 1) + ".json").c_str());
-	}
-	catch(std::exception& exc) {
-		std::cerr << exc.what() << "\n";
-		return -1;
-	}
-	catch(...) {
-		std::cerr << "Fatal Error: Unknown Exception!\n";
-		return -2;
-	}
-	return 0;
+                
+        /*******************************************************/
+        /* We get ready for the next impurity Solver iteration */
+        readParams("HYB")->setString("Hyb" + std::to_string(iteration + 1) + ".json");
+        writeNextHyb.write(beta,outputFolder + "Hyb" + std::to_string(iteration + 1) + ".json");
+        readParams.write(outputFolder + "params" +  std::to_string(iteration + 1) + ".json");
+        /*******************************************************/
+    }
+    catch(std::exception& exc) {
+        std::cerr << exc.what() << "\n";
+        return -1;
+    }
+    catch(...) {
+        std::cerr << "Fatal Error: Unknown Exception!\n";
+        return -2;
+    }
+    return 0;
 }
-
-
-
 
 
 

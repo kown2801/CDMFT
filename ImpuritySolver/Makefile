@@ -10,7 +10,7 @@ HEADERS_IS+= MPIUtilities.h
 all:     IS
 
 IS:  IS.C $(HEADERS_IS)
-	mpic++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ IS.C $(LDFLAGS) $(LIBS)	
+	source ../scripts/export.sh > /dev/null 2>&1 ; mpic++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ IS.C $(LDFLAGS) $(LIBS)	
 
 clean:
 	rm IS

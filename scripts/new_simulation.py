@@ -60,7 +60,7 @@ def generate_simulation(all_args):
 	sh_destination.write('#SBATCH --job-name="' + all_args["ep"] + all_args["U"] + all_args["mu"] + '"\n')
 	for l in lines:
 		sh_destination.write(l)
-	sh_destination.write(os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(all_args["iterations"]) + " 1")
+	sh_destination.write("python " + os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(all_args["iterations"]) + " 1")
 	del all_args["iterations"]
 	sh_destination.close()
 	#End creation run.sh

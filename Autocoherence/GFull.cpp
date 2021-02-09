@@ -3,22 +3,59 @@
 #include "Patrick/IO.h"
 #include "Patrick/Plaquette/Plaquette.h"
 
-//Vielleicht noch dritter moment der gp, aber wie am besten .... ?
+
+/*********************************************************/
+/* Alters the self energy in order to enforce symmetries */
+void self_constraints(std::map<std::string,std::complex<double> >& component_map){
+    component_map["pphi"] = (component_map["pphi"] - component_map["mphi"]).real()/2;
+    component_map["mphi"] = (component_map["mphi"] - component_map["pphi"]).real()/2;
+}
+/*********************************************************/
 
 double fermi(double arg) {
 	return arg > .0 ? std::exp(-arg)/(1. + std::exp(-arg)) : 1./(1. + std::exp(arg));
 };
+/****************************************************************************************/
+/* Distributes the components from coponent_map to matrix according to the jLink object */
+void component_map_to_matrix(json_spirit::mArray& jLink,RCuMatrix& matrix,std::map<std::string,std::complex<double> >& component_map){
+    std::size_t nSite_ = jLink.size()/2;
+    for(std::size_t i=0;i<jLink.size();i++){
+        for(std::size_t j=0;j<jLink.size();j++){        
+            std::complex<double> this_component = component_map[jLink[i].get_array()[j].get_str()];         
+            matrix(i,j) = this_component;
+            //We need to beware to initialize the down component according to the Nambu convention
+            if(i >= nSite_ && j>= nSite_){
+                matrix(i,j) = -std::conj(matrix(i,j));
+            }
+        }
+    }
+}
+/*********************/
+/* Loads a link file */
+void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
+    std::ifstream file(outputFolder + fileName); 
+    if(file) {
+        json_spirit::mValue temp;
+        json_spirit::read(file, temp); 
+        jLink = temp.get_array();
+    }else{
+        throw std::runtime_error(outputFolder + fileName + " not found.");
+    }
+}
+/*********************/
 
+/****************************************************************************************/
 int main(int argc, char** argv)
 {
 	try {
-		if(argc != 5) 
-			throw std::runtime_error("Usage : GFULL inputFolder dataFolder filename iteration");
+		if(argc != 6) 
+			throw std::runtime_error("Usage : GFULL inputFolder outputFolder dataFolder filename iteration");
 		
 		std::string inputFolder = argv[1]; 
-		std::string dataFolder = argv[2];
-		std::string name = argv[3];
-		int const iteration = std::atoi(argv[4]);
+		std::string outputFolder = argv[2];
+		std::string dataFolder = argv[3];
+		std::string name = argv[4];
+		int const iteration = std::atoi(argv[5]);
 
 		newIO::GenericReadFunc readParams(inputFolder + name + std::to_string(iteration) + ".meas.json","Parameters");
 
@@ -54,7 +91,48 @@ int main(int argc, char** argv)
 		
 		double ekin = EkinFM/2. - EkinSM*beta/4.;
 		
-		std::ifstream selfFile((dataFolder + "self" + std::to_string(iteration) + ".dat").c_str());
+            
+        /*************************************************************************************************************************/
+        /* We read the Link file in order to know the structure of the self-energy and hybridation functions                     */
+        /* This part changes if you prefer having the whole Link structure as an input. Here we assume spin symmetry */
+        json_spirit::mArray jLinkA;
+        readLinkFile(readParams("LINKA")->getString(),jLinkA,outputFolder);
+        json_spirit::mArray jLinkN;
+        readLinkFile(readParams("LINKN")->getString(),jLinkN,outputFolder);
+        std::size_t nSite_ = jLinkN.size();
+        json_spirit::mArray jLink(2*nSite_);
+        //First we create the full jLink matrix from the two little ones
+        for(std::size_t i=0;i<nSite_;i++){
+            jLink[i] = json_spirit::mArray(2*nSite_);
+            jLink[i + nSite_] = json_spirit::mArray(2*nSite_);
+            for(std::size_t j=0;j<nSite_;j++){
+                jLink[i].get_array()[j] = jLinkN[i].get_array()[j].get_str();
+                jLink[i + nSite_].get_array()[j + nSite_] = jLinkN[i].get_array()[j].get_str();
+                jLink[i + nSite_].get_array()[j] = jLinkA[i].get_array()[j].get_str();
+                jLink[i].get_array()[j + nSite_] = jLinkA[i].get_array()[j].get_str();
+            }
+        }
+        /*************************************************************************************************************************/ 
+        /*****************************************************************/
+        /* Now we create the map object that will contain the components */
+        std::map<std::string,std::complex<double> > component_map;
+        std::map<std::string,std::vector<std::pair<std::size_t,std::size_t> > > inverse_component_map;
+        for(std::size_t i=0;i<jLink.size();i++){
+            for(std::size_t j=0;j<jLink.size();j++){
+                component_map[jLink[i].get_array()[j].get_str()] = 0;
+                if ( inverse_component_map.find(jLink[i].get_array()[j].get_str()) == inverse_component_map.end() ) {
+                    inverse_component_map[jLink[i].get_array()[j].get_str()] = std::vector<std::pair<std::size_t,std::size_t> >();
+                }
+                inverse_component_map[jLink[i].get_array()[j].get_str()].push_back(std::pair<std::size_t,std::size_t>(i,j));
+            }
+        }
+        /*****************************************************************/
+        newIO::GenericReadFunc readSelf(dataFolder + "self" + std::to_string(iteration) + ".json","");
+
+		if(!readSelf.good()){ 
+			throw std::runtime_error("Error while reading selfenergy file.");
+		}
+
 		std::ofstream pxgreenFile((dataFolder + "pxgreen" + std::to_string(iteration) + ".dat").c_str());
 		std::ofstream pygreenFile((dataFolder + "pygreen" + std::to_string(iteration) + ".dat").c_str());
 		std::ofstream pxygreenFile((dataFolder + "pxygreen" + std::to_string(iteration) + ".dat").c_str());
@@ -68,43 +146,18 @@ int main(int argc, char** argv)
 		for(std::size_t n = 0; n < NMat; ++n) {
 			
 			std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
-						
-			double s00_R, s00_I, s01_R, s01_I, s11_R, s11_I,pphi_R, pphi_I, mphi_R, mphi_I;;
-			selfFile >> dummy >> s00_R >> s00_I >> s01_R >> s01_I >> s11_R >> s11_I >> pphi_R >> pphi_I >> mphi_R >> mphi_I;
-			std::complex<double> s00(s00_R, s00_I);
-			std::complex<double> s01(s01_R, s01_I);
-			std::complex<double> s11(s11_R, s11_I);
-			std::complex<double> pphi(pphi_R, pphi_I);
-			std::complex<double> mphi(mphi_R, mphi_I);
-			
+			/***********************************************/
+			/* We load the different selfEnergy components */
+ 			for (auto &p : component_map)
+            {
+                if(p.first != "empty"){ //We don't read the empty component
+                    p.second = readSelf(p.first)->getFunction(n);
+                }
+            } 
+			/***********************************************/
 			RCuMatrix selfEnergy;
-			selfEnergy("d_0Up", "d_0Up") = s00; selfEnergy("d_0Up", "d_1Up") = s01; selfEnergy("d_0Up", "d_2Up") = s11; selfEnergy("d_0Up", "d_3Up") = s01;
-			selfEnergy("d_1Up", "d_0Up") = s01; selfEnergy("d_1Up", "d_1Up") = s00; selfEnergy("d_1Up", "d_2Up") = s01; selfEnergy("d_1Up", "d_3Up") = s11;
-			selfEnergy("d_2Up", "d_0Up") = s11; selfEnergy("d_2Up", "d_1Up") = s01; selfEnergy("d_2Up", "d_2Up") = s00; selfEnergy("d_2Up", "d_3Up") = s01;
-			selfEnergy("d_3Up", "d_0Up") = s01; selfEnergy("d_3Up", "d_1Up") = s11; selfEnergy("d_3Up", "d_2Up") = s01; selfEnergy("d_3Up", "d_3Up") = s00;	
-			
-			selfEnergy("d_0Down", "d_0Down") = -std::conj(s00); selfEnergy("d_0Down", "d_1Down") = -std::conj(s01); selfEnergy("d_0Down", "d_2Down") = -std::conj(s11); selfEnergy("d_0Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_1Down", "d_0Down") = -std::conj(s01); selfEnergy("d_1Down", "d_1Down") = -std::conj(s00); selfEnergy("d_1Down", "d_2Down") = -std::conj(s01); selfEnergy("d_1Down", "d_3Down") = -std::conj(s11);
-			selfEnergy("d_2Down", "d_0Down") = -std::conj(s11); selfEnergy("d_2Down", "d_1Down") = -std::conj(s01); selfEnergy("d_2Down", "d_2Down") = -std::conj(s00); selfEnergy("d_2Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_3Down", "d_0Down") = -std::conj(s01); selfEnergy("d_3Down", "d_1Down") = -std::conj(s11); selfEnergy("d_3Down", "d_2Down") = -std::conj(s01); selfEnergy("d_3Down", "d_3Down") = -std::conj(s00);	
-			
-			selfEnergy("d_0Up", "d_1Down") = 
-			selfEnergy("d_0Down", "d_1Up") = 
-			selfEnergy("d_1Up", "d_0Down") = 
-			selfEnergy("d_1Down", "d_0Up") = 
-			selfEnergy("d_2Up", "d_3Down") = 
-			selfEnergy("d_2Down", "d_3Up") =
-			selfEnergy("d_3Up", "d_2Down") = 
-			selfEnergy("d_3Down", "d_2Up") = (pphi - mphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
-			selfEnergy("d_1Up", "d_2Down") = 
-			selfEnergy("d_1Down", "d_2Up") = 
-			selfEnergy("d_2Up", "d_1Down") = 
-			selfEnergy("d_2Down", "d_1Up") = 
-			selfEnergy("d_3Up", "d_0Down") = 
-			selfEnergy("d_3Down", "d_0Up") = 
-			selfEnergy("d_0Up", "d_3Down") = 
-			selfEnergy("d_0Down", "d_3Up") = (mphi - pphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			component_map_to_matrix(jLink,selfEnergy,component_map);
+			self_constraints(component_map);
 			
 			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			RCuOMatrix green = integrator(latticeGreen, M_PI/2., M_PI/2.);
@@ -166,13 +219,10 @@ int main(int argc, char** argv)
 			ekin += 2./beta*(integrator(latticeKineticEnergyRCuO, M_PI/2., M_PI/2.).trace()/8. - EkinFM/iomega - EkinSM/(iomega*iomega)).real();		
 		}
 		
-		if(selfFile >> dummy) 
-			throw std::runtime_error("Error while reading selfenergy file.");
 		
 		pfilling << iteration << " " << np << std::endl;
 		ekinFile << iteration << " " << ekin << std::endl;
 		
-		selfFile.close();
 		pxgreenFile.close();
 		pygreenFile.close();
 		pxygreenFile.close();

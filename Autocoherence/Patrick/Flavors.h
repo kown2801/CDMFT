@@ -119,6 +119,8 @@ namespace Fl {
 		
 		Hc<N, namesI, namesJ> hc() const { return Hc<N, namesI, namesJ>(*this);};
 		
+		int size(){return N;};
+		
 		FlavorMatrix& operator=(Diag const& diag) { *this = .0; diag.equ(*this); return *this;};		
 		template<class T> FlavorMatrix& operator=(T const& t) { t.equ(*this); return *this;};
 		template<class T> FlavorMatrix& operator-=(T const& t) { t.mequ(*this); return *this;};

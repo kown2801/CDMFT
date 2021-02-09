@@ -9,6 +9,7 @@
 #include <fstream>
 #include "Utilities.h"
 #include "Hyb.h"
+#include "../newIO.h"
 
 namespace IO {
 		
@@ -16,6 +17,7 @@ namespace IO {
 	struct GenericWriteFunc {
 		GenericWriteFunc() {};
 		F& operator()(std::string str) { return hyb_[str];};
+		std::map<std::string, F>& getMap(){return hyb_;};
 		void write(double beta, std::string fileName) {
 			json_spirit::mObject jHyb;
 			for(typename std::map<std::string, F>::iterator it = hyb_.begin(); it != hyb_.end(); ++it) {
@@ -69,6 +71,7 @@ namespace IO {
 	
 	typedef GenericReadFunc<Hyb::Read> ReadFunc;
 	typedef GenericWriteFunc<Hyb::Write> WriteFunc;
+	typedef GenericWriteFunc<newIO::DatWriter> WriteDat;
 };
 
 #endif

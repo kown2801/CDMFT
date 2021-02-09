@@ -10,15 +10,15 @@ FILES+= Patrick/Flavors.h Patrick/Hyb.h Patrick/IO.h newIO.h
 all: CDMFT GFULL STIFFNESS SUSCEPTIBILITY
 
 CDMFT: CDMFT.cpp $(FILES)
-	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ CDMFT.cpp $(LDFLAGS) $(LIBS)
+	source ../scripts/export.sh > /dev/null 2>&1; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ CDMFT.cpp $(LDFLAGS) $(LIBS)
 
 GFULL: GFull.cpp $(FILES)
-	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ GFull.cpp $(LDFLAGS) $(LIBS)
+	source ../scripts/export.sh > /dev/null 2>&1 ; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ GFull.cpp $(LDFLAGS) $(LIBS)
 
 STIFFNESS: STIFFNESS.cpp $(FILES)
-	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ STIFFNESS.cpp $(LDFLAGS) $(LIBS)
+	source ../scripts/export.sh > /dev/null 2>&1 ; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ STIFFNESS.cpp $(LDFLAGS) $(LIBS)
 
 SUSCEPTIBILITY: SUSCEPTIBILITY.cpp $(FILES)
-	g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ SUSCEPTIBILITY.cpp $(LDFLAGS) $(LIBS)
+	source ../scripts/export.sh > /dev/null 2>&1 ; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ SUSCEPTIBILITY.cpp $(LDFLAGS) $(LIBS)
 clean: 
 	rm CDMFT GFULL STIFFNESS

@@ -206,8 +206,15 @@ namespace newIO
 	struct GreenReader : public GenericReader{
 		GreenReader(json_spirit::mValue const& jEntry,json_spirit::Value_type valueType): GenericReader(valueType){
 			json_spirit::mObject const& jObject = jEntry.get_obj();
-			FM_ = jObject.at("First Moment").get_real();
-			SM_ = jObject.at("Second Moment").get_real();
+
+		  	auto it = jObject.find("First Moment");
+		  	if (it != jObject.end()){
+		  		FM_ = jObject.at("First Moment").get_real();
+		  	}
+		  	it = jObject.find("First Moment");
+		  	if (it != jObject.end()){
+		  		SM_ = jObject.at("Second Moment").get_real();
+		  	}
 			beta_ = jObject.at("beta").get_real();
 			Hyb::read(jObject.at("real").get_array(),jObject.at("imag").get_array(), beta_, values_, beta_);
 		};
@@ -259,7 +266,7 @@ namespace newIO
 
 	//We copy IO.h's function to be able to differenciate between types and get every type of read right
 	struct GenericReadFunc {
-		GenericReadFunc(std::string fileName,std::string nodeName){
+		GenericReadFunc(std::string fileName,std::string nodeName):loaded(false){
 			json_spirit::mObject jHybComplete;
 			std::ifstream file(fileName.c_str()); 
 			if(file) {
@@ -267,7 +274,7 @@ namespace newIO
 				json_spirit::read(file, temp); 
 				jHybComplete = temp.get_obj();
 			}else{
-				throw std::runtime_error(fileName + " not found.");
+				return;
 			}
 			json_spirit::mObject jHyb;
 			if(!nodeName.empty())
@@ -305,6 +312,7 @@ namespace newIO
 				hyb_.push_back(container);
 			}
 			std::cout << std::endl;
+			loaded = true;
 		};
 		struct GenericReader* operator()(std::string str){ 
 			if(index_.find(str) == index_.end())
@@ -353,12 +361,38 @@ namespace newIO
 				}
 			};
 		}
+		bool good(){
+			return loaded;
+		}
 		~GenericReadFunc() {
 			for(std::size_t i = 0; i < index_.size(); ++i) delete hyb_[i];
 		};
 	private:
 		std::map<std::string, std::size_t> index_;
 		std::vector<GenericReader*> hyb_;
+		bool loaded;
+	};
+
+
+
+	struct DatWriter : public std::vector<Ut::complex> {
+		DatWriter(){};
+		
+		void write(double beta, json_spirit::mObject& jEntry) {	
+			
+			jEntry["beta"] = beta; 
+            			
+			std::vector<double> real(size());
+			std::vector<double> imag(size());			
+			for(std::size_t n = 0; n < size(); ++n) {
+				real[n] = at(n).real();
+				imag[n] = at(n).imag();
+ 			}
+			
+			jEntry["real"] = json_spirit::mValue(real.begin(), real.end()); 
+			jEntry["imag"] = json_spirit::mValue(imag.begin(), imag.end()); 
+	
+		};
 	};
 
 }
