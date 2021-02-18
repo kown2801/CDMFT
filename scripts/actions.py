@@ -10,7 +10,8 @@ import json
 
 single_occupation_files = ["ekin.dat","pn.dat"]
 single_filenames = ["Chi0.dat","Chi0Sites.dat","D.dat","DSites.dat","ekin.dat","k.dat","kSites.dat","N.dat","NSites.dat","pn.dat","sign.dat","Sz.dat","SzSites.dat"]
-multiple_filenames = ["ChiFull","ChiFullSites","dgreen","green","hyb","pK","pxgreen","pxygreen","pygreen","self"]
+multiple_dat_filenames = ["ChiFull","ChiFullSites","dgreen","hyb","pK","pxgreen","pxygreen","pygreen"]
+multiple_json_filenames = ["green","self"]
 
 #Parser that prints the help on error
 class MyParser(argparse.ArgumentParser): 
@@ -53,7 +54,7 @@ def all_occupations_in_folder(files_dir):
     index = find_missing_occupation(input_dir,data_dir)
     if index != None:
         os.chdir("scripts")
-        run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
+        run(["./run_occupation.sh", os.path.join(data_from_autocoherence,output_dir), os.path.join(data_from_autocoherence,input_dir),os.path.join(data_from_autocoherence,data_dir), "params", str(index)])
         run(["sbatch","actions.sh","-a","occupations","-f",os.path.basename(os.path.normpath(files_dir))])
     else:
         for file in single_occupation_files:
@@ -118,8 +119,10 @@ def delete_last(files_dir):
                 print("Erreur au fichier " + file + " " + str(int(data[-1,0])) + " :  " + str(int(iteration)))
         except Exception as e:
             print("Erreur au fichier " + file)
-    for file in multiple_filenames:
+    for file in multiple_dat_filenames:
         delete_safely(os.path.join(data_dir,file + str(iteration) + ".dat"))
+    for file in multiple_json_filenames:
+        delete_safely(os.path.join(data_dir,file + str(iteration) + ".json"))
     delete_safely(os.path.join(input_dir,"Hyb" + str(int(iteration)+1) + ".json"))  
     delete_safely(os.path.join(input_dir,"params" + str(int(iteration)+1) + ".json"))       
     delete_safely(os.path.join(output_dir,"params" + str(iteration) + ".meas.json"))    
@@ -150,6 +153,9 @@ def prepare_copy(folder_name):
 #END
 
 #Beginning functions to compute the order parameter for all iterations that were not already computed
+def get_component(component,json_object):
+    return np.array(json_object[component]["real"]) + 1j*np.array(json_object[component]["imag"])
+
 def compute_order_parameter(folder_name):
     filename = "green"
     save_filename = folder_name + "/order_graph"
@@ -167,8 +173,10 @@ def compute_order_parameter(folder_name):
     i=offset
     try:
         while(True):
-            G_data = np.loadtxt(os.path.join(folder_name,"DATA/" + filename + str(i) + ".dat"))
-            G.append((G_data[:,1+2*(Composante+1)] - G_data[:,1+2*Composante])/2)
+            with open(os.path.join(folder_name,"DATA/green" + str(i) + ".json")) as f:
+                G_object = json.load(f)
+                data = (get_component("pphi",G_object) - get_component("mphi",G_object)).real/2
+                G.append(data)
             i+=1
 
     except Exception as e:
