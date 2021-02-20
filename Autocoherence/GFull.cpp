@@ -30,20 +30,6 @@ void component_map_to_matrix(json_spirit::mArray& jLink,RCuMatrix& matrix,std::m
         }
     }
 }
-/*********************/
-/* Loads a link file */
-void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
-    std::ifstream file(outputFolder + fileName); 
-    if(file) {
-        json_spirit::mValue temp;
-        json_spirit::read(file, temp); 
-        jLink = temp.get_array();
-    }else{
-        throw std::runtime_error(outputFolder + fileName + " not found.");
-    }
-}
-/*********************/
-
 /****************************************************************************************/
 int main(int argc, char** argv)
 {
@@ -91,28 +77,13 @@ int main(int argc, char** argv)
 		
 		double ekin = EkinFM/2. - EkinSM*beta/4.;
 		
-            
-        /*************************************************************************************************************************/
-        /* We read the Link file in order to know the structure of the self-energy and hybridation functions                     */
-        /* This part changes if you prefer having the whole Link structure as an input. Here we assume spin symmetry */
-        json_spirit::mArray jLinkA;
-        readLinkFile(readParams("LINKA")->getString(),jLinkA,outputFolder);
-        json_spirit::mArray jLinkN;
-        readLinkFile(readParams("LINKN")->getString(),jLinkN,outputFolder);
-        std::size_t nSite_ = jLinkN.size();
-        json_spirit::mArray jLink(2*nSite_);
-        //First we create the full jLink matrix from the two little ones
-        for(std::size_t i=0;i<nSite_;i++){
-            jLink[i] = json_spirit::mArray(2*nSite_);
-            jLink[i + nSite_] = json_spirit::mArray(2*nSite_);
-            for(std::size_t j=0;j<nSite_;j++){
-                jLink[i].get_array()[j] = jLinkN[i].get_array()[j].get_str();
-                jLink[i + nSite_].get_array()[j + nSite_] = jLinkN[i].get_array()[j].get_str();
-                jLink[i + nSite_].get_array()[j] = jLinkA[i].get_array()[j].get_str();
-                jLink[i].get_array()[j + nSite_] = jLinkA[i].get_array()[j].get_str();
-            }
-        }
-        /*************************************************************************************************************************/ 
+                
+        /***************************/
+        /* We read the Link file   */
+        json_spirit::mArray jLink;       
+		std::size_t nSite_;
+        newIO::readLinkFromParams(jLink, nSite_, outputFolder, readParams);
+        /***************************/
         /*****************************************************************/
         /* Now we create the map object that will contain the components */
         std::map<std::string,std::complex<double> > component_map;
@@ -211,8 +182,19 @@ int main(int argc, char** argv)
 			temp += green("py_1Up", "py_1Up").real();
 			temp += green("py_2Up", "py_2Up").real();
 			temp += green("py_3Up", "py_3Up").real();
+			//The down spins contribute with a minus sign because of the Nambu convention
+			temp -= green("px_0Down", "px_0Down").real();
+			temp -= green("px_1Down", "px_1Down").real();
+			temp -= green("px_2Down", "px_2Down").real();
+			temp -= green("px_3Down", "px_3Down").real();
+			temp -= green("py_0Down", "py_0Down").real();
+			temp -= green("py_1Down", "py_1Down").real();
+			temp -= green("py_2Down", "py_2Down").real();
+			temp -= green("py_3Down", "py_3Down").real();
 			
-			np += 2./beta*(temp/8. - (xp/(iomega - xp) - xm/(iomega - xm))/D).real();
+			//np is the number of electrons per site per spin
+
+			np += 2./beta*(temp/16 - (xp/(iomega - xp) - xm/(iomega - xm))/D).real();
 			
 			RCuOLatticeKineticEnergy latticeKineticEnergyRCuO(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			

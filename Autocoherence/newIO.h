@@ -394,6 +394,55 @@ namespace newIO
 	
 		};
 	};
+	/*******************/
+	/* LINK FILE UTILS */
+	/*******************/
+	/*********************/
+	/* Loads a link file */
+	void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
+	    std::ifstream file(outputFolder + fileName); 
+	    if(file) {
+	        json_spirit::mValue temp;
+	        json_spirit::read(file, temp); 
+	        jLink = temp.get_array();
+	    }else{
+	        throw std::runtime_error(outputFolder + fileName + " not found.");
+	    }
+	}
+	/*********************/
+	/*************************************************************************************************************************/
+	/* We read the Link file in order to know the structure of the self-energy and hybridation functions                     */
+	/* In order to adapt to multiple simulation types, we check for different possible configurations                        */
+	void readLinkFromParams(json_spirit::mArray& jLink, std::size_t& nSite_, std::string& outputFolder,newIO::GenericReadFunc& readParams){
+        /* First we check if there is the params file contains a LINK entry */
+        /* If so, we read the whole Link file from there */
+        bool existsLink;
+        const newIO::GenericReader* linkRead = readParams("LINK",existsLink);
+        if(linkRead){
+                readLinkFile(readParams("LINK")->getString(),jLink,outputFolder);
+                nSite_ = jLink.size()/2;
+        }else{
 
+        /* Else, we assume the program provides a Normal and an Anomal part for the matrix structure. This form is spin symmetric */
+            json_spirit::mArray jLinkA;
+            readLinkFile(readParams("LINKA")->getString(),jLinkA,outputFolder);
+            json_spirit::mArray jLinkN;
+            readLinkFile(readParams("LINKN")->getString(),jLinkN,outputFolder);
+            nSite_ = jLinkN.size();
+            jLink = json_spirit::mArray(2*nSite_);
+            //First we create the full jLink matrix from the two little ones
+            for(std::size_t i=0;i<nSite_;i++){
+            jLink[i] = json_spirit::mArray(2*nSite_);
+                jLink[i + nSite_] = json_spirit::mArray(2*nSite_);
+                for(std::size_t j=0;j<nSite_;j++){
+                    jLink[i].get_array()[j] = jLinkN[i].get_array()[j].get_str();
+                    jLink[i + nSite_].get_array()[j + nSite_] = jLinkN[i].get_array()[j].get_str();
+                    jLink[i + nSite_].get_array()[j] = jLinkA[i].get_array()[j].get_str();
+                    jLink[i].get_array()[j + nSite_] = jLinkA[i].get_array()[j].get_str();
+                }
+            }
+        }
+	}
 }
+/*************************************************************************************************************************/
 #endif

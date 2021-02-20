@@ -3,7 +3,7 @@
 #include "Patrick/IO.h"
 #include "Patrick/Plaquette/Plaquette.h"
 #include <json_spirit.h>
-
+    
 
 /*****************************************************************************/
 /* Alters the new Hyb file that comes out of the self-consistency relations. */
@@ -54,19 +54,6 @@ void readScalSites(std::string obs, newIO::GenericReadFunc& readParams, int iter
     file.close();
 }
 /****************************************************/
-/*********************/
-/* Loads a link file */
-void readLinkFile(std::string fileName, json_spirit::mArray& jLink,std::string outputFolder){
-    std::ifstream file(outputFolder + fileName); 
-    if(file) {
-        json_spirit::mValue temp;
-        json_spirit::read(file, temp); 
-        jLink = temp.get_array();
-    }else{
-        throw std::runtime_error(outputFolder + fileName + " not found.");
-    }
-}
-/*********************/
 /************************************************************************************/
 /* Saves the data of matrix into the writeDat object that is used to save json data */
 template<class T>
@@ -110,8 +97,8 @@ void component_map_to_matrix(json_spirit::mArray& jLink,RCuMatrix& matrix,std::m
         }
     }
 }
-
 /****************************************************************************************/
+
 /***************************************************/
 /* This scripts does the self-consistency relations*/
 /* It also post-processes the observables, adding the sign and saving them files for future use */
@@ -158,27 +145,12 @@ int main(int argc, char** argv)
         std::vector<RCuMatrix> hyb;
         /******************************/
             
-        /*************************************************************************************************************************/
-        /* We read the Link file in order to know the structure of the self-energy and hybridation functions                     */
-        /* This part changes if you prefer having the whole Link structure as an input. Here we assume spin symmetry */
-        json_spirit::mArray jLinkA;
-        readLinkFile(readParams("LINKA")->getString(),jLinkA,outputFolder);
-        json_spirit::mArray jLinkN;
-        readLinkFile(readParams("LINKN")->getString(),jLinkN,outputFolder);
-        std::size_t nSite_ = jLinkN.size();
-        json_spirit::mArray jLink(2*nSite_);
-        //First we create the full jLink matrix from the two little ones
-        for(std::size_t i=0;i<nSite_;i++){
-            jLink[i] = json_spirit::mArray(2*nSite_);
-            jLink[i + nSite_] = json_spirit::mArray(2*nSite_);
-            for(std::size_t j=0;j<nSite_;j++){
-                jLink[i].get_array()[j] = jLinkN[i].get_array()[j].get_str();
-                jLink[i + nSite_].get_array()[j + nSite_] = jLinkN[i].get_array()[j].get_str();
-                jLink[i + nSite_].get_array()[j] = jLinkA[i].get_array()[j].get_str();
-                jLink[i].get_array()[j + nSite_] = jLinkA[i].get_array()[j].get_str();
-            }
-        }
-        /*************************************************************************************************************************/
+        /***************************/
+        /* We read the Link file   */
+        json_spirit::mArray jLink;       
+        std::size_t nSite_;
+        newIO::readLinkFromParams(jLink, nSite_, outputFolder, readParams);
+        /***************************/
         /*****************************************************************/
         /* Now we create the map object that will contain the components */
         std::map<std::string,std::complex<double> > component_map;
