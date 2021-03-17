@@ -3,34 +3,9 @@
 #include "Patrick/IO.h"
 #include "Patrick/Plaquette/Plaquette.h"
 
-
-/*********************************************************/
-/* Alters the self energy in order to enforce symmetries */
-void self_constraints(std::map<std::string,std::complex<double> >& component_map){
-    component_map["pphi"] = (component_map["pphi"] - component_map["mphi"]).real()/2;
-    component_map["mphi"] = (component_map["mphi"] - component_map["pphi"]).real()/2;
-}
-/*********************************************************/
-
 double fermi(double arg) {
 	return arg > .0 ? std::exp(-arg)/(1. + std::exp(-arg)) : 1./(1. + std::exp(arg));
 };
-/****************************************************************************************/
-/* Distributes the components from coponent_map to matrix according to the jLink object */
-void component_map_to_matrix(json_spirit::mArray& jLink,RCuMatrix& matrix,std::map<std::string,std::complex<double> >& component_map){
-    std::size_t nSite_ = jLink.size()/2;
-    for(std::size_t i=0;i<jLink.size();i++){
-        for(std::size_t j=0;j<jLink.size();j++){        
-            std::complex<double> this_component = component_map[jLink[i].get_array()[j].get_str()];         
-            matrix(i,j) = this_component;
-            //We need to beware to initialize the down component according to the Nambu convention
-            if(i >= nSite_ && j>= nSite_){
-                matrix(i,j) = -std::conj(matrix(i,j));
-            }
-        }
-    }
-}
-/****************************************************************************************/
 int main(int argc, char** argv)
 {
 	try {
@@ -127,8 +102,8 @@ int main(int argc, char** argv)
             } 
 			/***********************************************/
 			RCuMatrix selfEnergy;
-			component_map_to_matrix(jLink,selfEnergy,component_map);
 			self_constraints(component_map);
+			newIO::component_map_to_matrix(jLink,selfEnergy,component_map);
 			
 			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			RCuOMatrix green = integrator(latticeGreen, M_PI/2., M_PI/2.);

@@ -2,6 +2,13 @@
 #define __PLAQUETTE
 
 #include "../Flavors.h"
+/****************************************************************/
+/* Alters the self energy in order to enforce symmetries.       */
+void self_constraints(std::map<std::string,std::complex<double> >& component_map){
+    component_map["pphi"] = (component_map["pphi"] - component_map["mphi"]).real()/2;
+    component_map["mphi"] = (component_map["mphi"] - component_map["pphi"]).real()/2;
+}
+/****************************************************************/
 
 Fl::FlavorNames RCuNames[] = {"d_0Up", "d_1Up", "d_2Up", "d_3Up", "d_0Down", "d_1Down", "d_2Down", "d_3Down"};
 Fl::FlavorNames CuONames[] = {"d", "px", "py"};

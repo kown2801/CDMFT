@@ -1,9 +1,0 @@
-Resetting modules to system default. Reseting $MODULEPATH back to system default. All extra directories will be removed from $MODULEPATH.
-
-Lmod is automatically replacing "intel/2016.4" with "gcc/7.3.0".
-
-
-The following have been reloaded with a version change:
-  1) gcccore/.5.4.0 => gcccore/.7.3.0     2) openmpi/2.1.1 => openmpi/3.1.2
-
-../ComputedData/ep8_beta60_mu10_U12_tpd1.5_tppp1/OUT/params1.meas.json not found.

@@ -5,6 +5,7 @@
 #include <fstream>
 #include "Patrick/Utilities.h"
 #include "Patrick/Hyb.h"
+#include "Patrick/Plaquette/Plaquette.h"
 namespace newIO
 {
 
@@ -443,6 +444,22 @@ namespace newIO
             }
         }
 	}
+	/*************************************************************************************************************************/
+	/****************************************************************************************/
+	/* Distributes the components from coponent_map to matrix according to the jLink object */
+	void component_map_to_matrix(json_spirit::mArray& jLink,RCuMatrix& matrix,std::map<std::string,std::complex<double> >& component_map){
+	    std::size_t nSite_ = jLink.size()/2;
+	    for(std::size_t i=0;i<jLink.size();i++){
+	        for(std::size_t j=0;j<jLink.size();j++){        
+	            std::complex<double> this_component = component_map[jLink[i].get_array()[j].get_str()];         
+	            matrix(i,j) = this_component;
+	            //We need to beware to initialize the down component according to the Nambu convention
+	            if(i >= nSite_ && j>= nSite_){
+	                matrix(i,j) = -std::conj(matrix(i,j));
+	            }
+	        }
+	    }
+	}
+	/****************************************************************************************/
 }
-/*************************************************************************************************************************/
 #endif

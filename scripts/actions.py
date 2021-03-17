@@ -160,7 +160,8 @@ def compute_order_parameter(folder_name):
     filename = "green"
     save_filename = folder_name + "/order_graph"
     Composante = 3
-    graph = np.zeros(0)
+    graph = np.zeros(0) 
+    graph = np.zeros((0,2)) #Comment if you want to only save the SC order parameter. Don't forget then to remove the AF-order-parameter part below
     G = []
     offset = 1
     #If there is one, load the existing order_parameter file
@@ -175,7 +176,7 @@ def compute_order_parameter(folder_name):
         while(True):
             with open(os.path.join(folder_name,"DATA/green" + str(i) + ".json")) as f:
                 G_object = json.load(f)
-                data = (get_component("pphi",G_object) - get_component("mphi",G_object)).real/2
+                data = -(get_component("pphi",G_object) - get_component("mphi",G_object)).real/2
                 G.append(data)
             i+=1
 
@@ -189,8 +190,13 @@ def compute_order_parameter(folder_name):
         #We load beta
         with open(folder_name + "/IN/params" + str(i-1) + ".json") as f:
             beta = json.load(f)["beta"]
-        #We sum over the Matsubara frequencies
+        #We sum over the Matsubara frequencies (factor 2 because we only have the positive frequencies here)
         G = np.sum(G,axis=1)*2/beta
+        #We add the antiferromagnetic order-parameter to the saved data
+        Sz = np.loadtxt(os.path.join(folder_name,"DATA/SzSites.dat"))[-G.shape[0]:]
+        Sz = Sz[:,1] - Sz[:,2] + Sz[:,3] - Sz[:,4]
+        G = np.stack((G,Sz),axis=1)
+        #End adding the AF order-parameter
         graph = np.concatenate((graph,G))
         np.save(save_filename,graph)
 #END

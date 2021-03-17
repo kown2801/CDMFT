@@ -9,12 +9,14 @@ double fermi(double arg) {
 int main(int argc, char** argv)
 {
 	try {
-		if(argc != 5) 
-			throw std::runtime_error("Usage : SUSCEPTIBILITY inputFolder dataFolder filename iteration");
- 		std::string inputFolder = argv[1]; 
-		std::string dataFolder = argv[2];
-		std::string name = argv[3];
-		int const iteration = std::atoi(argv[4]);
+		if(argc != 6) 
+			throw std::runtime_error("Usage : GFULL inputFolder outputFolder dataFolder filename iteration");
+		
+		std::string inputFolder = argv[1]; 
+		std::string outputFolder = argv[2];
+		std::string dataFolder = argv[3];
+		std::string name = argv[4];
+		int const iteration = std::atoi(argv[5]);
 
 		std::cout << "Iteration : " << iteration << std::endl;
 		newIO::GenericReadFunc readParams(inputFolder + name + std::to_string(iteration) + ".meas.json","Parameters");
@@ -34,13 +36,30 @@ int main(int argc, char** argv)
 		double const ep = readParams("ep")->getDouble();
 		unsigned int const NMat = beta*readParams("EGreen")->getInt()/(2*M_PI) + 1;
 	
-		std::string dummy;
-		std::ifstream selfFile((dataFolder + "self" + std::to_string(iteration) + ".dat").c_str());
-		if(!selfFile.is_open()){
-			std::cout << "No self-Energy file found. Continuing as if the self-Energy was zero" << std::endl;
-		}
+			/***************************/
+        /* We read the Link file   */
+        json_spirit::mArray jLink;       
+		std::size_t nSite_;
+        newIO::readLinkFromParams(jLink, nSite_, outputFolder, readParams);
+        /***************************/
+        /*****************************************************************/
+        /* Now we create the map object that will contain the components */
+        std::map<std::string,std::complex<double> > component_map;
+        std::map<std::string,std::vector<std::pair<std::size_t,std::size_t> > > inverse_component_map;
+        for(std::size_t i=0;i<jLink.size();i++){
+            for(std::size_t j=0;j<jLink.size();j++){
+                component_map[jLink[i].get_array()[j].get_str()] = 0;
+                if ( inverse_component_map.find(jLink[i].get_array()[j].get_str()) == inverse_component_map.end() ) {
+                    inverse_component_map[jLink[i].get_array()[j].get_str()] = std::vector<std::pair<std::size_t,std::size_t> >();
+                }
+                inverse_component_map[jLink[i].get_array()[j].get_str()].push_back(std::pair<std::size_t,std::size_t>(i,j));
+            }
+        }
+        /*****************************************************************/
+        
+        newIO::GenericReadFunc readSelf(dataFolder + "self" + std::to_string(iteration) + ".json","");
 		std::ofstream susceptibilityFile(dataFolder + "susceptibility.dat", std::ios::out | std::ios::app);
-		//
+
 		CuOMatrix susceptibility0_0 = 0;
 		CuOMatrix susceptibilityPI_0 = 0;
 		CuOMatrix susceptibilityPI_PI = 0;
@@ -50,47 +69,21 @@ int main(int argc, char** argv)
 		std::size_t n_max = 0;
 		for(std::size_t n = 0; n < NMat; ++n) {
 			
-			std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);
-			//We intialize the self energy						
-			double s00_R, s00_I, s01_R, s01_I, s11_R, s11_I,pphi_R, pphi_I, mphi_R, mphi_I;;
-			selfFile >> dummy >> s00_R >> s00_I >> s01_R >> s01_I >> s11_R >> s11_I >> pphi_R >> pphi_I >> mphi_R >> mphi_I;
-			std::complex<double> s00(s00_R, s00_I);
-			std::complex<double> s01(s01_R, s01_I);
-			std::complex<double> s11(s11_R, s11_I);
-			std::complex<double> pphi(pphi_R, pphi_I);
-			std::complex<double> mphi(mphi_R, mphi_I);
-			
+			std::complex<double> iomega(.0, (2*n + 1)*M_PI/beta);				
+			/***********************************************/
+			/* We load the different selfEnergy components */
+ 			for (auto &p : component_map)
+            {
+                if(p.first != "empty"){ //We don't read the empty component
+                    p.second = readSelf(p.first)->getFunction(n);
+                }
+            } 
+			/***********************************************/
 			RCuMatrix selfEnergy;
-			selfEnergy("d_0Up", "d_0Up") = s00; selfEnergy("d_0Up", "d_1Up") = s01; selfEnergy("d_0Up", "d_2Up") = s11; selfEnergy("d_0Up", "d_3Up") = s01;
-			selfEnergy("d_1Up", "d_0Up") = s01; selfEnergy("d_1Up", "d_1Up") = s00; selfEnergy("d_1Up", "d_2Up") = s01; selfEnergy("d_1Up", "d_3Up") = s11;
-			selfEnergy("d_2Up", "d_0Up") = s11; selfEnergy("d_2Up", "d_1Up") = s01; selfEnergy("d_2Up", "d_2Up") = s00; selfEnergy("d_2Up", "d_3Up") = s01;
-			selfEnergy("d_3Up", "d_0Up") = s01; selfEnergy("d_3Up", "d_1Up") = s11; selfEnergy("d_3Up", "d_2Up") = s01; selfEnergy("d_3Up", "d_3Up") = s00;	
+			self_constraints(component_map);
+			newIO::component_map_to_matrix(jLink,selfEnergy,component_map);
 			
-			selfEnergy("d_0Down", "d_0Down") = -std::conj(s00); selfEnergy("d_0Down", "d_1Down") = -std::conj(s01); selfEnergy("d_0Down", "d_2Down") = -std::conj(s11); selfEnergy("d_0Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_1Down", "d_0Down") = -std::conj(s01); selfEnergy("d_1Down", "d_1Down") = -std::conj(s00); selfEnergy("d_1Down", "d_2Down") = -std::conj(s01); selfEnergy("d_1Down", "d_3Down") = -std::conj(s11);
-			selfEnergy("d_2Down", "d_0Down") = -std::conj(s11); selfEnergy("d_2Down", "d_1Down") = -std::conj(s01); selfEnergy("d_2Down", "d_2Down") = -std::conj(s00); selfEnergy("d_2Down", "d_3Down") = -std::conj(s01);
-			selfEnergy("d_3Down", "d_0Down") = -std::conj(s01); selfEnergy("d_3Down", "d_1Down") = -std::conj(s11); selfEnergy("d_3Down", "d_2Down") = -std::conj(s01); selfEnergy("d_3Down", "d_3Down") = -std::conj(s00);	
-			
-			selfEnergy("d_0Up", "d_1Down") = 
-			selfEnergy("d_0Down", "d_1Up") = 
-			selfEnergy("d_1Up", "d_0Down") = 
-			selfEnergy("d_1Down", "d_0Up") = 
-			selfEnergy("d_2Up", "d_3Down") = 
-			selfEnergy("d_2Down", "d_3Up") =
-			selfEnergy("d_3Up", "d_2Down") = 
-			selfEnergy("d_3Down", "d_2Up") = (pphi - mphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-			
-			selfEnergy("d_1Up", "d_2Down") = 
-			selfEnergy("d_1Down", "d_2Up") = 
-			selfEnergy("d_2Up", "d_1Down") = 
-			selfEnergy("d_2Down", "d_1Up") = 
-			selfEnergy("d_3Up", "d_0Down") = 
-			selfEnergy("d_3Down", "d_0Up") = 
-			selfEnergy("d_0Up", "d_3Down") = 
-			selfEnergy("d_0Down", "d_3Up") = (mphi - pphi).real()/2.; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-			//We create the susceptibility using the selfEnergy object to be able to integrate on the full Brillouin zone
-			
 			SpinSusceptibility susceptibilityFunction0_0(iomega + mu, tpd, tpp, tppp, ep, selfEnergy,0,0);
 			susceptibility0_0 += integrator(susceptibilityFunction0_0, M_PI, M_PI);
 			SpinSusceptibility susceptibilityFunctionPI_0(iomega + mu, tpd, tpp, tppp, ep, selfEnergy,M_PI,0);
