@@ -19,7 +19,7 @@ def run(iterations_max,files_dir,iteration_start = 0):
 	os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)))) #The working directory is now the scripts directory
 
 	iterations=iteration_start
-	autocoherence_dir = os.path.join(path_to_main_dir,"Autocoherence")
+	autocoherence_dir = os.path.join(path_to_main_dir,"SelfConsistency")
 	solver_dir = os.path.join(path_to_main_dir,"ImpuritySolver")
 	input_dir = os.path.join(os.path.join(files_dir,"IN"),"")
 	output_dir = os.path.join(os.path.join(files_dir,"OUT"),"")
@@ -56,7 +56,7 @@ def run(iterations_max,files_dir,iteration_start = 0):
 		out_file.write(data)
 		out_file.close()
 		#We can now go on with the cycle
-		to_log("Calling the Autocoherence")
+		to_log("Calling the self-consistency")
 		call([os.path.join(autocoherence_dir,"CDMFT"), output_dir, input_dir, data_dir, "params", str(iterations)])
 		to_log("end iteration " + str(iterations)  + " at: " + str(datetime.datetime.now().strftime("%Y-%m-%d %H:%M")) + "\n")
 

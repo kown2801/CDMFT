@@ -19,19 +19,20 @@ int main(int argc, char** argv)
 		mpi::cout << "Start task at " << std::ctime(&(time = std::time(NULL))) << std::flush;
 		
 		Ut::Simulation simulation(inputFolder, outputFolder, fileName);
-		json_spirit::mObject const& jParams = simulation.params();
+		json const& jParams = simulation.params();
 		Ma::MarkovChain* markovChain = 0;
 		
 		{	
 			//Reading all the input files and keeping in memory the output filename
 
-			json_spirit::mValue jHyb;
-			mpi::read_json(inputFolder + jParams.at("HYB").get_str(), jHyb);
+			json jHyb;
+			std::string hybFileName = jParams["HYB"];
+			mpi::read_json(inputFolder + hybFileName, jHyb);
 			
-			json_spirit::mArray jLink;
+			json jLink;
 			IO::readLinkFromParams(jLink, inputFolder,jParams);
 
-			markovChain = new Ma::MarkovChain(jParams, jHyb.get_obj(), jLink, simulation);
+			markovChain = new Ma::MarkovChain(jParams, jHyb, jLink, simulation);
 		}
 
 		MC::MonteCarlo(*markovChain, simulation);

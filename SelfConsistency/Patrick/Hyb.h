@@ -98,7 +98,9 @@ namespace Hyb {
 		json const& jTemp = jObject;
 		/* It changes the beta for all components in jObject */
 		for (auto& el : jTemp.items()){
+			std::cout << "Initialising data entry " << el.key() << " ... ";
 			jObject[el.key()] = read(jTemp[el.key()],betaOut);
+			std::cout << "Ok" << std::endl;
 		} 
 	}
 };

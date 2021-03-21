@@ -1,7 +1,6 @@
-Autocoherence/CDMFT
-Autocoherence/GFULL
-Autocoherence/STIFFNESS
-Autocoherence/SUSCEPTIBILITY
+SelfConsistency/CDMFT
+SelfConsistency/GFULL
+SelfConsistency/STIFFNESS
 ImpuritySolver/IS
 *__pycache__
 *.ipynb

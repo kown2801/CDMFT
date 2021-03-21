@@ -7,4 +7,4 @@
 #SBATCH --error=occupation-log.out
 #SBATCH --output=occupation-log.out
 
-source ./export.sh ; ../Autocoherence/GFULL $@
+source ./export.sh ; ../SelfConsistency/GFULL $@

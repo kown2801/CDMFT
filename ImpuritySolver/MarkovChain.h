@@ -9,7 +9,7 @@
 #include <cstring>
 #include <cassert>
 #include <utility>
-#include <json_spirit.h>
+#include <nlohmann/json.hpp>
 #include "Utilities.h"
 #include "Link.h"
 #include "Bath.h"
@@ -24,14 +24,14 @@ namespace Ma {
 			out << "lall, schwaetz, d.h. vorallem dings wenn's z'streng wird." << std::endl << std::endl;
 		};
 		
-		MarkovChain(json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jHyb, json_spirit::mArray const& jLink, Ut::Simulation& simulation) :
+		MarkovChain(json const& jNumericalParams, json  const& jHyb, json const& jLink, Ut::Simulation& simulation) :
 		simulation_(simulation),
 		node_(mpi::rank()),
-		rng_(jNumericalParams.at("SEED").get_int()),
+		rng_(jNumericalParams["SEED"].get<double>()),
 		ud_(0.,1.),
 		urng_([this](){return ud_(rng_);}),
-		beta_(jNumericalParams.at("beta").get_real()),
-		probFlip_(jNumericalParams.at("PROBFLIP").get_real()),
+		beta_(jNumericalParams["beta"]),
+		probFlip_(jNumericalParams["PROBFLIP"]),
 		nSite_(jLink.size()/2),
 		link_(jNumericalParams, jHyb, jLink, simulation.meas()),
 		trace_(nSite_, static_cast<Tr::Trace*>(0)),
@@ -39,7 +39,7 @@ namespace Ma {
 		signTrace_(1),
 		signBath_(1),
 		accSign_(.0),
-		pK_(.0, jNumericalParams.at("EOrder").get_int()),
+		pK_(.0, jNumericalParams["EOrder"]),
 		acc_(jNumericalParams),
 		accChiij_(.0,nSite_*nSite_*acc_.Chi.size()),
 		accChiijReal_(0.,accChiij_.size()),
@@ -48,19 +48,18 @@ namespace Ma {
 		updateFlipAcc_(0),
 		updateFlipTot_(0) {
 			Ut::Measurements& measurements = simulation.meas();
-			std::cout << jNumericalParams.at("SEED").get_int() << std::endl;
+			std::cout << jNumericalParams["SEED"] << std::endl;
             
-			json_spirit::mValue jPreviousConfigValue;
+			json jPreviousConfig;
 
 
 			try{
-				mpi::read_json_all_processors(simulation_.outputFolder() + "config_" + std::to_string(node_) + ".json", jPreviousConfigValue);
-				json_spirit::mObject const& jPreviousConfig = jPreviousConfigValue.get_obj();
+				mpi::read_json_all_processors(simulation_.outputFolder() + "config_" + std::to_string(node_) + ".json", jPreviousConfig);
 				if(jPreviousConfig.size()) {
-					double beta = jPreviousConfig.at("beta").get_real();
+					double beta = jPreviousConfig["beta"];
 					if(beta != beta_) throw std::runtime_error("MarkovChain: missmatch in beta");
 					
-					int nSite = jPreviousConfig.at("nSite").get_int();
+					int nSite = jPreviousConfig["nSite"];
 					if(nSite != nSite_) throw std::runtime_error("MarkovChain: missmatch in site number");
 					
 					for(int site = 0; site < nSite_; ++site) {
@@ -75,7 +74,7 @@ namespace Ma {
 					
 					signBath_ *= bath_->rebuild(link_);
 					
-					int key = jPreviousConfig.at("key").get_int();
+					int key = jPreviousConfig["key"];
 					if(key != 5345433) 
 						throw std::runtime_error("MarkovChain: error while reading config file.");
 				} else 
@@ -87,7 +86,7 @@ namespace Ma {
 				}
 			}catch(...)
 			{
-				json_spirit::mObject jPreviousConfig = json_spirit::mObject();
+				json jPreviousConfig;
 				mpi::cout << "No config file found" << std::endl;
 				for(int site = 0; site < nSite_; ++site) 
 				{
@@ -208,7 +207,7 @@ namespace Ma {
 			
 			delete bath_;	
 
-			json_spirit::mObject jConfig;
+			json jConfig;
 			int key = 5345433; 
 			jConfig["beta"] = beta_;
 			jConfig["nSite"] = nSite_;
@@ -218,9 +217,7 @@ namespace Ma {
 				delete trace_[site];
 			};
 
-			std::ofstream file((simulation_.outputFolder() + "config_" + std::to_string(node_) + ".json").c_str());			
-			json_spirit::write(jConfig, file, json_spirit::pretty_print | json_spirit::single_line_arrays | json_spirit::remove_trailing_zeros);			
-			file.close();
+			IO::writeJsonToFile(simulation_.outputFolder() + "config_" + std::to_string(node_) + ".json",jConfig,false);		
 		};
 	private:
 		Ut::Simulation& simulation_;

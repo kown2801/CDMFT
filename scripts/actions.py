@@ -45,7 +45,7 @@ def find_missing_occupation(input_dir,data_dir):
 
 def all_occupations_in_folder(files_dir):
     data_from_autocoherence = "../"
-    autocoherence_dir = "Autocoherence/"
+    autocoherence_dir = "SelfConsistency/"
     solver_dir = "ImpuritySolver/"
     input_dir = os.path.join(files_dir,"IN/")
     output_dir = os.path.join(files_dir,"OUT/")
@@ -65,7 +65,7 @@ def all_occupations_in_folder(files_dir):
             #We need to sort everything to be sure it's ok
     return 0
 def order_and_remove_occupation(files_dir):
-    autocoherence_dir = "Autocoherence/"
+    autocoherence_dir = "SelfConsistency/"
     solver_dir = "ImpuritySolver/"
     input_dir = os.path.join(files_dir,"IN/")
     output_dir = os.path.join(files_dir,"OUT/")

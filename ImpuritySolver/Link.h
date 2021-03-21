@@ -7,33 +7,34 @@
 #include <vector>
 #include <map>
 #include <algorithm>
-#include <json_spirit.h>
+#include <nlohmann/json.hpp>
 #include "Utilities.h"
 #include "Green.h"
 #include "Hyb.h"
 
 namespace Link {
 	struct Link {
-		Link(json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jHyb, json_spirit::mArray const& jLink, Ut::Measurements& measurements) : 
-		beta_(jNumericalParams.at("beta").get_real()), 
+		Link(json const& jNumericalParams, json const& jHyb, json const& jLink, Ut::Measurements& measurements) : 
+		beta_(jNumericalParams["beta"]), 
 		//The Link object includes spins up and down so the number of site is half the Link array size
 		nSite_(jLink.size()/2),
 		greenEntry_(new Entry[4*nSite_*nSite_]), 
 		hybEntry_(new Entry[4*nSite_*nSite_]), 
 		multiplicity_(jHyb.size(), 0) {	
 			std::map<std::string, int> entryIndex; int index = 0;
-			for(json_spirit::mObject::const_iterator it = jHyb.begin(); it != jHyb.end(); ++it) 
-				entryIndex[it->first] = index++; 
+			for (auto& el : jHyb.items()){
+			    entryIndex[el.key()] = index++; 
+			}
+				
 			
 			std::cout << "Reading in link file ... " << std::endl;			
 			
 			for(unsigned int i = 0; i < jLink.size(); ++i) {
-				json_spirit::mArray jRow = jLink[i].get_array();
-				if(jRow.size() != 2*nSite_) 
+				if(jLink[i].size() != 2*nSite_) 
 					throw(std::runtime_error("Wrong row size."));
 				
-				for(unsigned int j = 0; j < jRow.size(); ++j) {
-					std::string entry = jRow[j].get_str(); std::cout << entry << " ";						
+				for(unsigned int j = 0; j < jLink[i].size(); ++j) {
+					std::string entry = jLink[i][j]; std::cout << entry << " ";						
 					Entry temp;
 					
 					if(entry.compare("empty")) {
@@ -63,7 +64,7 @@ namespace Link {
 			green_ = allocGreen_.allocate(multiplicity_.size());
 			
 			for(std::map<std::string, int>::const_iterator it = entryIndex.begin(); it != entryIndex.end(); ++it) {
-				new(hyb_ + it->second) Hyb::Function(it->first, jNumericalParams, jHyb.at(it->first).get_obj());
+				new(hyb_ + it->second) Hyb::Function(it->first, jNumericalParams, jHyb[it->first]);
 				new(green_ + it->second) Green::Meas(it->first, jNumericalParams, measurements);
 			}
 		};

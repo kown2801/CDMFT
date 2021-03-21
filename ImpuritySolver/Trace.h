@@ -64,10 +64,10 @@ namespace Tr {
 	};
 	
 	struct Meas {
-		Meas(json_spirit::mObject const& jNumericalParams) : 
+		Meas(json const& jNumericalParams) : 
 		k(.0), N(.0), Sz(.0), D(.0), 
 		Chi(.0,
-			jNumericalParams.at("EObs").get_real() > .0 ? jNumericalParams.at("EObs").get_real()*jNumericalParams.at("beta").get_real()/(2.*M_PI) + 2 : 1
+			jNumericalParams["EObs"].get<double>() > .0 ? jNumericalParams["EObs"].get<double>()*jNumericalParams["beta"].get<double>()/(2.*M_PI) + 2 : 1
 			) {
 		};
 		double k;
@@ -81,10 +81,10 @@ namespace Tr {
 	struct Trace {
 		typedef std::set<Operator> Operators;
 		
-		Trace(json_spirit::mObject const& jNumericalParams, int site, Ut::Measurements& measurements,json_spirit::mObject const& jPreviousConfig) :
-		beta_(jNumericalParams.at("beta").get_real()),
-		U_(jNumericalParams.at("U").get_real()),
-		mu_(jNumericalParams.at("mu").get_real()),
+		Trace(json const& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig) :
+		beta_(jNumericalParams["beta"]),
+		U_(jNumericalParams["U"]),
+		mu_(jNumericalParams["mu"]),
 		shift_(std::max(0., std::max(mu_*beta_, 2.*mu_*beta_ - U_*beta_))),
 		Tr00_0_(std::exp(-shift_)),
 		Tr00_1_(std::exp(mu_*beta_ - shift_)),
@@ -100,13 +100,13 @@ namespace Tr {
 			operators_[1] = new Operators();
 			
 			if(jPreviousConfig.size()) {
-				json_spirit::mObject jPreviousConfigSite = jPreviousConfig.at("Site " + std::to_string(site)).get_obj();
+				json const & jPreviousConfigSite = jPreviousConfig["Site " + std::to_string(site)];
 				for(int spin = 0; spin < 2; ++spin) {
-					json_spirit::mArray jPreviousConfigSiteSpin = jPreviousConfigSite.at("Spin " + std::to_string(spin)).get_array();
+					json const& jPreviousConfigSiteSpin = jPreviousConfigSite["Spin " + std::to_string(spin)];
 					std::size_t size = jPreviousConfigSiteSpin.size();
 					for(std::size_t i = 0; i < size; ++i) {
-						int type = jPreviousConfigSiteSpin[i].get_obj().at("type").get_int();
-						double time = jPreviousConfigSiteSpin[i].get_obj().at("time").get_real();
+						int type = jPreviousConfigSiteSpin[i]["type"];
+						double time = jPreviousConfigSiteSpin[i]["time"];
 						operators_[spin]->insert(Operator(type, time));
 					}
 				}
@@ -343,12 +343,12 @@ namespace Tr {
 		std::valarray<double>& getChi(){
 			return acc_.Chi;
 		}	
-		void saveConfig(json_spirit::mObject& jConfig,int site) {
-			json_spirit::mObject jConfigSite;
+		void saveConfig(json& jConfig,int site) {
+			json jConfigSite;
 			for(int spin = 0; spin < 2; ++spin) {
-				json_spirit::mArray jConfigSiteSpin;
+				json jConfigSiteSpin;
 				for(Operators::const_iterator it = operators(spin).begin();  it != operators(spin).end(); ++it) {
-					json_spirit::mObject jElement;
+					json jElement;
 					jElement["type"] = it->type();
 					jElement["time"] = it->time();
 					jConfigSiteSpin.push_back(jElement);

@@ -6,15 +6,15 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
-#include <json_spirit.h>
+#include <nlohmann/json.hpp>
 #include "Utilities.h"
 
 namespace Green {
 	struct Meas {
-		Meas(std::string name, json_spirit::mObject const& jNumericalParams, Ut::Measurements& measurements) :
+		Meas(std::string name, json const& jNumericalParams, Ut::Measurements& measurements) :
 		name_(name),
-		beta_(jNumericalParams.at("beta").get_real()),
-		nMatG_(beta_*jNumericalParams.at("EGreen").get_real()/(2*M_PI) + 1), 
+		beta_(jNumericalParams["beta"]),
+		nMatG_(beta_*jNumericalParams["EGreen"].get<double>()/(2*M_PI) + 1), 
 		nItG_(4*(2*nMatG_ + 1)), 
 		DeltaInv_(nItG_/beta_),
 		green_(new double[4*nItG_]) {

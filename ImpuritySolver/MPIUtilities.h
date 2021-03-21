@@ -7,8 +7,10 @@
 
 #include <fstream>
 #include <sstream>
-#include <json_spirit.h>
+#include <nlohmann/json.hpp>
 #include <valarray>
+#include "IO.h"
+using json=nlohmann::json;
 
 namespace mpi {		
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -34,7 +36,7 @@ namespace mpi {
 		return temp;
 	};
 	
-	void read_json(std::string name, json_spirit::mValue& temp) {
+	void read_json(std::string name, json& jObject) {
 		int size;
 		std::string buffer;
 		
@@ -60,14 +62,12 @@ namespace mpi {
 		MPI_Bcast(&buffer[0], size, MPI_CHAR, master, MPI_COMM_WORLD); 
 #endif
 		
-		json_spirit::read(buffer, temp);
+		jObject = json::parse(&buffer[0],&buffer[0] + size);
 	}	
 	
-	void write_json(json_spirit::mValue const& temp, std::string name) {
+	void write_json(std::string name,json const& jObject) {
 		if(rank() == master) {
-			std::ofstream file(name.c_str());
-		    json_spirit::write(temp, file, json_spirit::pretty_print | json_spirit::single_line_arrays | json_spirit::remove_trailing_zeros);
-			file.close();
+			IO::writeJsonToFile(name,jObject,true);
 		}
 #ifdef HAVE_MPI
 		MPI_Barrier(MPI_COMM_WORLD);
@@ -111,23 +111,8 @@ namespace mpi {
 	}
 
 
-	void read_json_all_processors(std::string name, json_spirit::mValue& temp) {
-		int size;
-		std::string buffer;
-		
-		std::ifstream file(name.c_str()); 
-		if(!file) throw std::runtime_error(name + " not found.");
-		
-		file.seekg(0, std::ios::end);
-		size = file.tellg();
-		file.seekg(0, std::ios::beg);
-		
-		buffer.resize(size);
-		file.read(&buffer[0], size);
-		
-		file.close();	
-		
-		json_spirit::read(buffer, temp);
+	void read_json_all_processors(std::string name, json& jObject) {
+		IO::readJsonFile(name,jObject);
 	}	
 	
 // This is a temporary solution !!!!!!

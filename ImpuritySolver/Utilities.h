@@ -7,6 +7,8 @@
 #include <valarray>
 #include "MPIUtilities.h"
 #include <iterator>
+#include <nlohmann/json.hpp>
+using json=nlohmann::json;
 
 extern "C" {
 	double dasum_(int const*, double const*, int const*);
@@ -90,10 +92,10 @@ struct Observable {
 	  		            binlen*=2;
 	  		            bin++;
 	  		            if(bin>=last_bin_.size()){
-	  		                last_bin_.resize(std::max BOOST_PREVENT_MACRO_SUBSTITUTION (bin+1,last_bin_.size()));
-	  		                sum_.resize(std::max BOOST_PREVENT_MACRO_SUBSTITUTION (bin+1, sum_.size()));
-	  		                sum2_.resize(std::max BOOST_PREVENT_MACRO_SUBSTITUTION (bin+1,sum2_.size()));
-	  		                bin_entries_.resize(std::max BOOST_PREVENT_MACRO_SUBSTITUTION (bin+1,bin_entries_.size()));
+	  		                last_bin_.resize((std::max)(bin+1,last_bin_.size()));
+	  		                sum_.resize((std::max)(bin+1, sum_.size()));
+	  		                sum2_.resize((std::max)(bin+1,sum2_.size()));
+	  		                bin_entries_.resize((std::max)(bin+1,bin_entries_.size()));
   
   			  	  		    last_bin_[bin].resize(x.size());
   	  		                sum_[bin].resize(x.size());
@@ -137,9 +139,9 @@ struct Observable {
 		}
 		/* In this function, we take all the measurements we have on all the processors and regroup them on the master processor
 		 * From this data, we compute the mean and the binning error (on the single processors and also between the processors)
-		 * We save save it to two json_spirit objects to be able to save them to a file
+		 * We save save it to two json objects to be able to save them to a file
 		 * */
-		void reduce(json_spirit::mValue& jMean,json_spirit::mValue& jErrors) {
+		void reduce(json& jMean,json& jErrors) {
 			
 			if(counter_ < 2)
 				throw std::runtime_error("Meas: Not enough measurements taken !");
@@ -155,7 +157,7 @@ struct Observable {
 			//Then we compute and save the mean only on the first processor
 			if(mpi::rank() == mpi::master) {
 				accBinningMean/=accCounter;
-				jMean = json_spirit::mValue(&accBinningMean[0], &accBinningMean[0] + accBinningMean.size());
+				jMean = accBinningMean;
 			}
 			
 			//Now we get the error. This operation is a bit trickier
@@ -247,19 +249,19 @@ struct Observable {
 				}
 			}
 			if(mpi::rank() == mpi::master) {
-				/* In order to save the whole error graphs if you want to do some error analysis, use th following line */
-				//jErrors = json_spirit::mValue(&accBinningErrs[0], &accBinningErrs[0] + accBinningErrs.size());
+				/* In order to save the whole error graphs if you want to do some error analysis, use the following line */
+					//jErrors = accBinningErrs;
 				/* Else we need for each vector component, only the maximum error */
-				///*
-				std::valarray<double> binningErrs(accBinningMean.size());
-				//We need to have a valarray to be able to perform the max operation on a slice
-				std::valarray<double> accBinningErrsValArray(accBinningErrs.data(), accBinningErrs.size());
-				uint32_t n_errs = accBinningErrs.size()/binningErrs.size();
-				for(uint32_t i = 0 ; i<binningErrs.size();i++){
-					binningErrs[i] = static_cast<std::valarray<double> >(accBinningErrsValArray[std::slice(i,n_errs,binningErrs.size())]).max();
-				}
-				jErrors = json_spirit::mValue(&binningErrs[0], &binningErrs[0] + binningErrs.size());
-				//*/
+					///*
+					std::valarray<double> binningErrs(accBinningMean.size());
+					//We need to have a valarray to be able to perform the max operation on a slice
+					std::valarray<double> accBinningErrsValArray(accBinningErrs.data(), accBinningErrs.size());
+					uint32_t n_errs = accBinningErrs.size()/binningErrs.size();
+					for(uint32_t i = 0 ; i<binningErrs.size();i++){
+						binningErrs[i] = static_cast<std::valarray<double> >(accBinningErrsValArray[std::slice(i,n_errs,binningErrs.size())]).max();
+					}
+					jErrors = binningErrs;
+					//*/
 			}
 
 
@@ -281,16 +283,14 @@ struct Observable {
 	struct Simulation {
 		Simulation(std::string inputFolder,std::string outputFolder,std::string name) : name_(name), outputFolder_(outputFolder) {
 			{
-			    json_spirit::mValue temp;
-			    mpi::read_json(inputFolder + name_ + ".json", temp);
-			    jParams_ = temp.get_obj();
+			    mpi::read_json(inputFolder + name_ + ".json", jParams_);
 			}
 
-			jParams_["SEED"] = jParams_.at("SEED").get_int() + mpi::rank();
+			jParams_["SEED"] = jParams_["SEED"].get<double>() + mpi::rank();
 		};
 		
-		json_spirit::mObject const& params() { return jParams_;};
-		json_spirit::mObject& jobspecs() { return jJobSpecs_;};
+		json const& params() { return jParams_;};
+		json& jobspecs() { return jJobSpecs_;};
 		Measurements& meas() { return measurements_;};
 		
 		void save(uint64_t thermalization_sweeps,uint64_t measurement_sweeps) {
@@ -305,8 +305,8 @@ struct Observable {
 			acc_measurement_sweeps = measurement_sweeps;
 #endif
 						
-			json_spirit::mObject jMeas;		
-			json_spirit::mObject jErrors;
+			json jMeas;		
+			json jErrors;
 			for(std::map<std::string, Observable>::iterator it = measurements_.begin(); it != measurements_.end(); ++it) 
 				it->second.reduce(jMeas[it->first],jErrors[it->first]);
 
@@ -316,18 +316,16 @@ struct Observable {
 				jJobSpecs_["Measurement Sweeps per Processor"] = acc_measurement_sweeps/static_cast<double>(mpi::number_of_workers());
 				jJobSpecs_["Number of Processors"] = mpi::number_of_workers();
 				
-				json_spirit::mObject jParams = jParams_;
-				jParams["SEED"] = jParams.at("SEED").get_int() + mpi::number_of_workers(); 
+				json jParams = jParams_;
+				jParams["SEED"] = jParams["SEED"].get<double>() + mpi::number_of_workers(); 
 				
-			    json_spirit::mObject temp;
+			    json temp;
 				temp["Parameters"] = jParams;
 				temp["Job Specifications"] = jJobSpecs_; 
 			    temp["Measurements"] = jMeas;
 			    temp["Errors"] = jErrors;
-
-				std::ofstream file((outputFolder_ + name_ + ".meas.json").c_str());				
-				json_spirit::write(temp, file, json_spirit::pretty_print | json_spirit::single_line_arrays | json_spirit::remove_trailing_zeros);
-				file.close();
+		
+				IO::writeJsonToFile(outputFolder_ + name_ + ".meas.json", temp);
 			}
 #ifdef HAVE_MPI
 			MPI_Barrier(MPI_COMM_WORLD);
@@ -340,8 +338,8 @@ struct Observable {
 	private:
 		std::string const name_;
 		std::string const outputFolder_;
-		json_spirit::mObject jParams_;
-		json_spirit::mObject jJobSpecs_;
+		json jParams_;
+		json jJobSpecs_;
 		Measurements measurements_;
 	};
 	
