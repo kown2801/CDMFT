@@ -153,7 +153,6 @@ struct Observable {
 			std::valarray<double> binningSum = binning_sum();
 			std::valarray<double> accBinningMean(mpi::rank() == mpi::master ? binningSum.size() : 0);
 			mpi::reduce(binningSum,accBinningMean);
-
 			//Then we compute and save the mean only on the first processor
 			if(mpi::rank() == mpi::master) {
 				accBinningMean/=accCounter;

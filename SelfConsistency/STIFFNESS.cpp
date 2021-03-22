@@ -10,7 +10,7 @@ int main(int argc, char** argv)
 {
 	try {
 		if(argc != 6) 
-			throw std::runtime_error("Usage : GFULL inputFolder outputFolder dataFolder filename iteration");
+			throw std::runtime_error("Usage : STIFFNESS inputFolder outputFolder dataFolder filename iteration");
 		
 		/******************************/
         /* Initialisation of variable */
@@ -69,7 +69,7 @@ int main(int argc, char** argv)
 		std::complex<double> last_stiffness = 0;
 		double error = 1e-2;
 		double min_value = 1e-4;
-		Int::EulerMaclaurin2D<std::complex<double>> integrator(1.e-2, 4, 12);
+		Int::EulerMaclaurin2D<std::complex<double>> integrator(error, 4, 12);
 		std::size_t n_max = 0;
 		for(std::size_t n = 0; n < NMat; ++n) {
 			
@@ -90,9 +90,13 @@ int main(int argc, char** argv)
 			
 
 			SuperfluidStiffness superfluid(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);
-			last_stiffness = integrator(superfluid, M_PI, M_PI);
+			last_stiffness = 2.*integrator(superfluid, M_PI, M_PI); //Because the sum is over all (positive and negative) Matsubara frequencies, there is a factor of 2 here.
 			stiffness += last_stiffness;
 			n_max = n;
+			//Computing each term is pretty long. We need a stopping criteria in order to sum over just enough matsubara Frequencies.
+			//The criteria for stopping here is : 
+			//We suppose the matsubara terms of the stiffness are decreasing with n
+			//So if by considering all the next terms are equal to the one just computed and their total contribution is smaller than the targeted error/10, then we can safely stop
 			if( std::abs(last_stiffness)/std::abs(stiffness) * (NMat - n) < error/10 || std::abs(stiffness) < min_value){
 				break;
 			}

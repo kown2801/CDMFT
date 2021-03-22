@@ -29,27 +29,58 @@ To call the program, use :
 
 (Don't forget the / after the directory names)
 
-there are two cases of use of this program : 
+There are two ways of using this program : 
 * if iteration equals 0, it uses the parameter file in inputDirectory ('inputfilename{iteration}.json' - for example 'params0.json') in order to create an initial hybridation file with an all-zero self-energy. It however initializes the anomal self-energy to delta/(1+i\omega_n^2) in order to permit supraconductivity (delta being defined in the params0.json file) and i\omega_n the Matsubara frequency. This case is only used if you want to start from scratch. The usual way of doing things is to reuse a Hyb file frome previous simulations.
 
-* if iteration is non-zero, it uses the results/parameter file in inputDirectory (inputfilename{iteration}.meas.json - for example 'params0.json') AND the Hybiteration.json file in outputDirectory in order to compute the hybridation file for the next iteration. In this case to ensure a greater stability in the results, the new hybridation function is a weighted combination of the old hybridation function (weight w) and the hybridation function computed using the self-consistency relation (weight 1-w). This w is equal to weightR + i\*weightI defined in the results/parameter file.
+* if iteration is non-zero, it uses the results/parameter file in `inputDirectory/` (`inputfilename{iteration}.meas.json` - for example `params0.meas.json`) AND the `Hyb{iteration}.json` file in `outputDirectory/` in order to compute the hybridation file for the next iteration. In this case to ensure a greater stability in the results, the new hybridation function is a weighted combination of the old hybridation function (weight w) and the hybridation function computed using the self-consistency relation (weight 1-w). This w is equal to weightR + i\*weightI defined in the results/parameter file.
 
-	In both cases, it creates a inputfilename(iteration + 1).json (for example params1.json if iteration=0) file in outputDirectory with the parameters of the next iteration. It also creates a Hyb(iteration + 1).json file in this same directory. This allows to continue the self-consistency cycle.
-	This program also creates some .dat files in dataDirectory (greeniteration.dat, selfiteration.dat and hybiteration.dat or others that you may inspect at your will) (TODO Maybe make a list in future versions of this readme)
+In both cases, it creates a `inputfilename{iteration + 1}.json` (for example `params2.json` if iteration=1) file in `outputDirectory/` with the parameters of the next iteration. It also creates a `Hyb{iteration + 1}.json` file in this same directory. This allows to continue the self-consistency cycle.
+This program also creates .dat and .json files in `dataDirectory/` in order to more easily access the results of the simulation. 
+Notable files are:
+* `N.dat` that provides the copper occupation per site per spin
+* `D.dat` that provides the copper double occupation per site
+* `self{iteration}.json` that contains the self-energy for the iteration
+* `green{iteration}.json` that contains the copper Green's funcition for the iteration
 
-	Here we provide a minimal working example with : 
-$ ./CDMFT IN/ OUT/ DATA/ params 0
+Here I provide a minimal working example with : 
 
-	and :
-$ ./CDMFT IN/ OUT/ DATA/ params 1
+	./CDMFT IN/ OUT/ DATA/ params 0
 
-	-------- Including oxygens -------
-	We never compute observables about the oxygens in the program. In order to do so, we use the GFULL program.
+and :
+
+	./CDMFT IN/ OUT/ DATA/ params 70
+
+## Including Oxygens
+
+We never compute observables about the oxygens in the program. That's because we only look directly at copper sites. The effectof the oxygen sites is only included in the Hybridization function. In order to do look at what is happening on the oxygen, we use the GFULL program.
 	
-$ ./GFULL inputFolder/ dataFolder/ filename iteration
-	(Don't forget the / after the directory names)
+	./GFULL inputDirectory/ outputDirectory/ dataDirectory/ inputfilename iteration
 
-	It computes the full Green's function on the 3 bands, the 2 spins and the 4 sites. It takes more memory and time than the self-consistency and this is why it is a separate program. Its input are the inputFolder/filenameiteration.meas.json that comes out of the impurity-solver and the dataFolder/selfiteration.dat that comes out of the CDMFT program. It then outputs many observables into dat files in the dataFolder/ (for example the oxygen occupation, the kinetic energy or the oxygen-oxygen and the copper-oxygen Green's function) 
+(Don't forget the / after the directory names)
 
-	Here we provide a minimal working example with : 
-$ ./GFULL IN/ DATA/ params 1
+It computes the full Green's function on the 3 bands, the 2 spins and the 4 sites. It takes more memory and time than the self-consistency and this is why it is a separate program. Its inputs are the `inputDirectory/inputfilename{iteration}.meas.json` that comes out of the impurity-solver and the `dataDirectory/self{iteration}.json` that comes out of the CDMFT program. It then outputs many observables into dat files in the `dataDirectory/`.
+Notable observables include :
+* The oxygen occupation per site per spin in `pn.dat`
+* The kinetic energy in `ekin.dat` 
+* Some terms of the oxygen-oxygen green's function in pxgreen, pygreen and pxygreen files
+
+Here I provide a minimal working example with : 
+
+	./GFULL IN/ OUT/ DATA/ params 70
+
+## Superfluid Stiffness
+
+We provide a calculation of the superfluid stiffness using a self-energy on the copper cluster.
+
+	./STIFFNESS inputDirectory/ outputDirectory/ dataDirectory/ inputfilename iteration
+
+(Don't forget the / after the directory names)
+The only output is a line in the `dataDirectory/stiffness.dat`.
+On this line the terms are in order : 
+* the iteration
+* the real part of the stiffness
+* the imaginary part of the stiffness (it should always be zero,I provide it just for verification purposes)
+
+Here I provide a minimal working example with : 
+
+	./STIFFNESS IN/ OUT/ DATA/ params 70

@@ -1,0 +1,103 @@
+Restauration de l'environnement par défaut
+1 : Start task at Sun Mar 21 18:39:48 2021
+2 : Start task at Sun Mar 21 18:39:48 2021
+3 : Start task at Sun Mar 21 18:39:48 2021
+0 : Start task at Sun Mar 21 18:39:48 2021
+Reading in link file ... 
+00 01 11 01 empty pphi empty mphi 01 00 01 11 pphi empty mphi empty 11 01 00 01 empty mphi empty pphi 01 11 01 00 mphi empty pphi empty empty pphi empty mphi 00 01 11 01 pphi empty mphi empty 01 00 01 11 empty mphi empty pphi 11 01 00 01 mphi empty pphi empty 01 11 01 00 
+Reading in link file ... 
+Reading in link file ... 
+00 01 11 01 empty pphi empty mphi 01 00 01 11 pphi empty mphi empty 11 01 00 01 empty mphi empty pphi 01 11 01 00 mphi empty pphi empty empty pphi empty mphi 00 01 11 01 pphi empty mphi empty 01 00 01 11 empty mphi empty pphi 11 01 00 01 mphi empty pphi empty 01 11 01 00 
+... Ok
+
+... Ok
+
+Reading in link file ... 
+00 01 11 01 empty pphi empty mphi 01 00 01 11 pphi empty mphi empty 11 01 00 01 empty mphi empty pphi 01 11 01 00 mphi empty pphi empty empty pphi empty mphi 00 01 11 01 pphi empty mphi empty 01 00 01 11 empty mphi empty pphi 11 01 00 01 mphi empty pphi empty 01 11 01 00 
+00 01 11 01 empty pphi empty mphi 01 00 01 11 pphi empty mphi empty 11 01 00 01 empty mphi empty pphi 01 11 01 00 mphi empty pphi empty empty pphi empty mphi 00 01 11 01 pphi empty mphi empty 01 00 01 11 empty mphi empty pphi 11 01 00 01 mphi empty pphi empty 01 11 01 00 
+... Ok
+
+... Ok
+
+Initialising data entry 00 ... Ok
+Initialising data entry 00 ... Ok
+Initialising data entry 00 ... Ok
+Initialising data entry 00 ... Ok
+Initialising data entry 01 ... Ok
+Initialising data entry 01 ... Ok
+Initialising data entry 01 ... Ok
+Initialising data entry 01 ... Ok
+Initialising data entry 11 ... Ok
+Initialising data entry 11 ... Ok
+Initialising data entry 11 ... Ok
+Initialising data entry 11 ... Ok
+Initialising data entry mphi ... Ok
+Initialising data entry mphi ... Ok
+Initialising data entry mphi ... Ok
+Initialising data entry mphi ... Ok
+Initialising data entry pphi ... Ok
+88775.0
+Initialising data entry pphi ... Ok
+88774.0
+Initialising data entry pphi ... Ok
+2 : No config file found
+88776.0
+2 : Start thermalization at Sun Mar 21 18:39:49 2021
+3 : No config file found
+1 : No config file found
+1 : Start thermalization at Sun Mar 21 18:39:49 2021
+3 : Start thermalization at Sun Mar 21 18:39:49 2021
+Initialising data entry pphi ... Ok
+88773.0
+0 : No config file found
+0 : Start thermalization at Sun Mar 21 18:39:49 2021
+We go for 120 seconds of MonteCarlo thermalization
+1 : Start measurements at Sun Mar 21 18:42:11 2021
+2 : Start measurements at Sun Mar 21 18:42:11 2021
+3 : Start measurements at Sun Mar 21 18:42:11 2021
+0 : Start measurements at Sun Mar 21 18:42:11 2021
+We go for 2100 seconds of MonteCarlo simulation
+0 : Start saving simulation at Sun Mar 21 19:17:13 2021
+3 : Start saving simulation at Sun Mar 21 19:17:14 2021
+2 : Start saving simulation at Sun Mar 21 19:17:16 2021
+1 : Start saving simulation at Sun Mar 21 19:17:16 2021
+0Up:  0.39116
+0Up:  0.390787
+0Down:  0.402856
+1Up:  0.406229
+1Down:  0.386248
+2Up:  0.382917
+2Down:  0.408174
+3Up:  0.407329
+3Down:  0.384116
+Flip:  0.15824
+0Up:  0.400936
+0Down:  0.391891
+1Up:  0.385686
+1Down:  0.406448
+2Up:  0.401793
+2Down:  0.392872
+0Up:  0.405061
+0Down:  0.387508
+1Up:  0.376388
+1Down:  0.416706
+2Up:  0.401634
+2Down:  0.391175
+3Up:  0.385888
+3Down:  0.406444
+Flip:  0.168242
+3Up:  0.38996
+3Down:  0.403086
+Flip:  0.185802
+0Down:  0.40033
+1Up:  0.395753
+1Down:  0.39515
+2Up:  0.392202
+2Down:  0.399644
+3Up:  0.398518
+3Down:  0.393456
+Flip:  0.172787
+3 : Task of worker finished at Sun Mar 21 19:17:16 2021
+1 : Task of worker finished at Sun Mar 21 19:17:16 2021
+0 : Task of worker finished at Sun Mar 21 19:17:16 2021
+2 : Task of worker finished at Sun Mar 21 19:17:16 2021

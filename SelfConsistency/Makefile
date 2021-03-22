@@ -12,8 +12,8 @@ all: CDMFT GFULL STIFFNESS
 CDMFT: CDMFT.cpp $(FILES)
 	source ../scripts/export.sh > /dev/null 2>&1; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ CDMFT.cpp $(LDFLAGS) $(LIBS)
 
-GFULL: GFull.cpp $(FILES)
-	source ../scripts/export.sh > /dev/null 2>&1 ; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ GFull.cpp $(LDFLAGS) $(LIBS)
+GFULL: GFULL.cpp $(FILES)
+	source ../scripts/export.sh > /dev/null 2>&1 ; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ GFULL.cpp $(LDFLAGS) $(LIBS)
 
 STIFFNESS: STIFFNESS.cpp $(FILES)
 	source ../scripts/export.sh > /dev/null 2>&1 ; g++ $(CPPINCLUDES) $(CPPFLAGS) $(CXXFLAGS) -o $@ STIFFNESS.cpp $(LDFLAGS) $(LIBS)

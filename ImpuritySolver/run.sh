@@ -7,4 +7,4 @@
 #SBATCH --account=def-tremblay
 
 
-source ../scripts/export.sh ; srun IS IN/ OUT/ params1
+source ../scripts/export.sh ; srun IS IN/ OUT/ params70
