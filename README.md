@@ -18,7 +18,7 @@ OpenBlas, pthread, nlohmann/json, openmpi
 * pthread is used only by OpenBlas and not used directly in the present program.
 * pthread and openmpi are already accessible from ComputeCanada clusters.
 * Openblas is also accessible directly from ComputeCanada clusters but the version they have there doesn't seem to be able to compute the inverse of a matrix. Therefore, we need to recompile it by hand. I provide the instructions for installing OpenBlas
-* The nlomann/json library is already installed in the project. It is only a single `.hpp` file. this file is called `nlohmann_json.hpp` in both the `SelfConsistency` and `ImpuritySolver/` directories. It is from commit n°176d8e261 from https://github.com/nlohmann/json.git. I just changed the dump function for arrays in order to make them oneline, to make the `.json` files more readable.
+* The nlomann/json library is already installed in the project. It is only a single `.hpp` file. this file is called `nlohmann_json.hpp` in both the `SelfConsistency/` and `ImpuritySolver/` directories. It is a copy of the file `single_include/nlohmann/json.hpp` from commit n°176d8e261 of https://github.com/nlohmann/json.git. I just changed the dump function for arrays in order to make them oneline. It makes the `.json` files more readable.
 
 Let's go.
 First you need to create a "local" folder in your home directory. Then inside of this folder, create a `lib/` directory.
@@ -27,9 +27,6 @@ First you need to create a "local" folder in your home directory. Then inside of
 	mkdir local
 	cd local
 	mkdir lib
-
-	~/local
-	├── lib
 
 You need to install one library. If you are lazy you can just execute the ./install-libraries.sh script to install it at once(this may take a while).
 
@@ -64,7 +61,7 @@ This is the minimal structure of the ${HOME}/local folder you need.
 
 ## Usage
 
-You can either use the programs using what is written in the 'SelfConsistency/README.md' and 'ImpuritySolver/README.md' files or use the python library that I wrote in order to launch simulations. 
+You can either use the programs using what is written in the [SelfConsistency/README.md](SelfConsistency/README.md) and [ImpuritySolver/README.md](ImpuritySolver/README.md) files or use the python library that I wrote in order to launch simulations. 
 I describe here how to setup the python scripts on your local computer to sart using the code now.
 All the scripts I write about here are located in the 'localScripts/' folder at the root of the repository. In order to use those, copy the content of this directory on your personal - or work - computer. Please make sure to copy all the content of the directory because the structure of the code is important for it to work.
 
