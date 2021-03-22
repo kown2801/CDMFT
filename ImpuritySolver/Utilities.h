@@ -7,7 +7,7 @@
 #include <valarray>
 #include "MPIUtilities.h"
 #include <iterator>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 using json=nlohmann::json;
 
 extern "C" {

@@ -1,7 +1,7 @@
 #ifndef __NEWIO
 #define __NEWIO
 
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 #include <fstream>
 using json=nlohmann::json;
 

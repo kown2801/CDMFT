@@ -9,12 +9,12 @@
 #include <cstring>
 #include <cassert>
 #include <utility>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 #include "Utilities.h"
 #include "Link.h"
 #include "Bath.h"
 #include "Trace.h"
-
+using json=nlohmann::json;
 //check detailed balance for k=0 
 
 namespace Ma {

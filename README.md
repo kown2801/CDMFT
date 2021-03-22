@@ -15,28 +15,24 @@ If you are not on such computers, you will need to install more things than expl
 This program relies on multiple libraries.
 OpenBlas, pthread, nlohmann/json, openmpi
 
-pthread is used only by OpenBlas and not used directly in the present program.
-pthread and openmpi are already accessible from ComputeCanada clusters.
-Openblas is also accessible directly from ComputeCanada clusters but the version they have there doesn't seem to be able to compute the inverse of a matrix. Therefore, we need to recompile it by hand.
-I provide the instructions for installing OpenBlas and nlohmann/json
+* pthread is used only by OpenBlas and not used directly in the present program.
+* pthread and openmpi are already accessible from ComputeCanada clusters.
+* Openblas is also accessible directly from ComputeCanada clusters but the version they have there doesn't seem to be able to compute the inverse of a matrix. Therefore, we need to recompile it by hand. I provide the instructions for installing OpenBlas
+* The nlomann/json library is already installed in the project. It is only a single `.hpp` file. this file is called `nlohmann_json.hpp` in both the `SelfConsistency` and `ImpuritySolver/` directories. It is from commit n°176d8e261 from https://github.com/nlohmann/json.git. I just changed the dump function for arrays in order to make them oneline, to make the `.json` files more readable.
 
 Let's go.
-First you need to create a "local" folder in your home directory. Then inside of this folder, create two directories "lib" and "include".
+First you need to create a "local" folder in your home directory. Then inside of this folder, create a `lib/` directory.
 	
 	cd
 	mkdir local
 	cd local
-	mkdir lib include
+	mkdir lib
 
 	~/local
 	├── lib
-		├── libopenblas.a 
-	├── include
-		├── nlohmann
-			├── json.hpp
 
-If at some point you don't understand the steps or the organisation of the folders, check the end of this installation tutorial where you have the final structure of the local folder.
-You need to install two libraries. If you are lazy you can just execute the ./install-libraries.sh script to install those two libraries at once (this may take a while).
+You need to install one library. If you are lazy you can just execute the ./install-libraries.sh script to install it at once(this may take a while).
+
 ### Installing OpenBlas : 
 
 go into the 'local' folder and clone the Openblas github repository
@@ -59,25 +55,12 @@ Then copy the freshly compiled library to your lib folder
 
 	cp libopenblas.a ~/local/lib 
 
-### Installing nlohmann/json
-
-Again in the 'local' folder, type :
-
-	git clone https://github.com/nlohmann/json.git
-
-Then you only nee to copy the nlohmann folder in  to your include folder and you're ready to go
-
-	cp json/single_include/nlohmann/ include/nlhomann -r
-
-The installation part is finished. Now you still need to make the program. In order to do that, go to the Readme files inside the two folders (ImpuritySolver, SelfConsistency). Don't forget to do this much as you wouldn't be able to run the program without it.
+The library installation part is finished. Now you still need to make the program. In order to do that, go to the Readme files inside the two folders (ImpuritySolver, SelfConsistency). Don't forget to do this much as you wouldn't be able to run the program without it.
 This is the minimal structure of the ${HOME}/local folder you need.
 
 	~/local
 	├── lib
 		├── libopenblas.a 
-	├── include
-		├── nlohmann
-			├── json.hpp
 
 ## Usage
 

@@ -1,11 +1,11 @@
 CXXFLAGS += -g -rdynamic -O3 -Wall -std=c++14 
-CPPINCLUDES += -I${HOME}/local/include
+CPPINCLUDES += 
 CPPFLAGS += -DNDEBUG -DHAVE_MPI
 LDFLAGS += -L${HOME}/local/lib
 LIBS += -lopenblas -lpthread
 
 HEADERS_IS = Bath.h Utilities.h Hyb.h Green.h Link.h Trace.h MarkovChain.h MonteCarlo.h IO.h
-HEADERS_IS+= MPIUtilities.h  
+HEADERS_IS+= MPIUtilities.h nlohmann_json.hpp 
 
 all:     IS
 

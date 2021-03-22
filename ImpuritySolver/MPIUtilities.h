@@ -7,7 +7,7 @@
 
 #include <fstream>
 #include <sstream>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 #include <valarray>
 #include "IO.h"
 using json=nlohmann::json;

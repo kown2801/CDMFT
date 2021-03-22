@@ -8,7 +8,7 @@
 #include <map>
 #include <algorithm>
 #include <sstream>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 #include "Utilities.h"
 using json=nlohmann::json;
 

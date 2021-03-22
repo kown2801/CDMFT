@@ -1,11 +1,11 @@
 CXXFLAGS += -g -rdynamic -O3 -Wall -std=c++14 
-CPPINCLUDES += -I${HOME}/local/include
+CPPINCLUDES += 
 CPPFLAGS += -DNDEBUG -DHAVE_MPI
 LDFLAGS += -L${HOME}/local/lib
 LIBS += -lopenblas -lpthread
 
 FILES =  Patrick/Integrators.h  Patrick/Plaquette/Plaquette.h Patrick/Utilities.h Patrick/Hyb.h Patrick/Flavors.h
-FILES+= IO.h
+FILES+= IO.h nlohmann_json.hpp
 
 all: CDMFT GFULL STIFFNESS 
 

@@ -6,7 +6,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 #include "Utilities.h"
 
 namespace Green {

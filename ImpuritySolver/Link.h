@@ -7,7 +7,7 @@
 #include <vector>
 #include <map>
 #include <algorithm>
-#include <nlohmann/json.hpp>
+#include "nlohmann_json.hpp"
 #include "Utilities.h"
 #include "Green.h"
 #include "Hyb.h"
