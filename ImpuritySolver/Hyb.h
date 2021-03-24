@@ -13,10 +13,27 @@
 using json=nlohmann::json;
 
 namespace Hyb {
-	/* When changing beta, the matsubara frequencies change, and the indices don't correspond to the same frequencies */
-	/* This function adapts the Matsubara data contained in (jComponentIn["real"] + i*jComponentIn["imag"]) */
-	/* 	from jComponentIn["beta"] to betaOut and returns the result */
-	/* The result conserves the other attributes of jComponentIn */
+
+	/** 
+	* 
+	* json read(json const& jComponentIn, double betaOut)
+	* 
+	* Parameters :	jComponentIn : component of the Matsubara function that is being read
+	*				betaOut : beta of the program in which the function needs to be transformed
+	*
+	* Returns:
+	*	A json object containing the real part ("real" attribute) and the imaginary part("imag" attribute) of the input function
+	*	with a beta adapted to the simualtion betaOut. 
+	*	The other attributes of jComponentIn are simply copied
+	*
+	* Description: 
+	*   Reads the hybridization function from the jComponentIn array.
+	* 	I name beta = jComponentIn["beta"]
+	*	As we are in Fourrier space with Matsubara frequencies PI*(2*m+1)/beta, we need to adapt the read data to the beta in the simulation.
+	*	This function computes function(iwn) from function(iwm) with wm = PI*(2*m+1)/beta, wn = PI*(2*n+1)/betaOut using linear interpolation.
+	* 	The input function is (jComponentIn["real"] + i*jComponentIn["imag"])
+	* 
+	*/
 	json read(json const& jComponentIn, double betaOut) {
 		json jComponentOut = jComponentIn;
 		double const betaIn = jComponentIn["beta"];
@@ -45,6 +62,24 @@ namespace Hyb {
 	};
 	/* Constructs the Hybridization Function in the imaginary time space */
 	struct Function {
+	/** 
+		* 
+		* Function(std::string name, json const& jNumericalParams, json const& jEntry)
+		* 
+		* Parameters :	name : name of the Entry
+		*				jNumericalParams : numerical parameters of the simulation
+		*				jEntry : Entry
+		*
+		* Description: 
+		*   Reads the matsubara entry from the json Object jEntry.
+		*	Transforms the entry(Matsubara frequencies) to imaginary time with a Fourrier Transform
+		* 	The little trick here is the following : 
+		*		As the self-energy computed with this hybridation has high statisctical noise at high Matsubara frequency, we use a trick to compute the hybridation to correct this noise.
+		*		We expand the hybridation function at the second order in i(omega_n) for omega->infinity and compute the Fourrier transform exactly
+		*		We then compute numerically the remaining part of the fourrier transform thus reducing numerical noise.
+		*		For more details, see appendix B.3 and B.1 of E. Gull's PHD Thesis (link: https://www.research-collection.ethz.ch/handle/20.500.11850/104013)
+		* 	Stores the result for use in the Program
+		*/
 		Function(std::string name, json const& jNumericalParams, json const& jEntry) : 
 		beta_(jNumericalParams["beta"]), 
 		nItH_(jNumericalParams["EHyb"].get<double>()*jNumericalParams["EHyb"].get<double>()*beta_ + 1), 
@@ -75,7 +110,13 @@ namespace Hyb {
 			
 			std::cout << "Ok" << std::endl;
 		};
-		
+		/** 
+		* get(double time)
+		* 
+		* Parameters :	time : time at wich we wànt the hybridation function
+		*
+		* Return Value : the  function at time `time` using linear interpolation on the discretized hybridation function we read from file
+		*/
 		double get(double time) const { 
 			double it = time/beta_*nItH_; int i0 = static_cast<int>(it);
 			return (1. - (it - i0))*hyb_[i0] + (it - i0)*hyb_[i0 + 1];

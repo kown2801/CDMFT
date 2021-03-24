@@ -21,6 +21,14 @@
 
 namespace Tr {
 	//Da beim erase die operatoren nicht veraendert werden gehen keine berechneten exponentiale verlohren
+	/** 
+	* 
+	* struct Operator
+	* 
+	* Description: 
+	*   This Class describes an operator (described by a time, a type). 
+	*	The spin is not included here but directly in the bath
+	*/
 	struct Operator {
 		Operator() : exp_(0) {};
 		Operator(Operator const& other) : type_(other.type_), time_(other.time_), exp_(0) {};
@@ -34,7 +42,15 @@ namespace Tr {
 		int type() const { return type_;};
 		int* ptr() const { return 0;};
 		double time() const { return time_;};
-		
+		/** 
+		* 
+		* std::complex<double> const* exp(unsigned int N, double beta)
+		* 
+		* Returns :	a vector of size N, his elements are exp(i*j*(time_*2*PI/beta)), j in [0,N-1]
+		*
+		* Description: 
+		*   The type of the operator doesn't come in line
+		*/
 		std::complex<double> const* exp(unsigned int N, double beta) const {
 			if(!exp_) {
 				exp_ = new Ut::complex[N];
@@ -77,10 +93,29 @@ namespace Tr {
 		std::valarray<double> Chi;
 		double Chiij;
 	};
-	
+	/** 
+	* 
+	* struct Trace
+	* 
+	* Description: 
+	*   This Class describes a site of the system. It stores all the informations about that site and allows all the updates.
+	* 	The name Trace doesn't really mean anything in this program. Its name could be replaced by SiteHandler for example
+	*	This is where the segments are stored and handled
+	*/
 	struct Trace {
 		typedef std::set<Operator> Operators;
-		
+		/** 
+		* 
+		* Trace(jso nconst& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig)
+		* 
+		* Parameters :	jNumericalParams : storage of all the numerical parameters of the simulation
+		*				site : number of the site this refers to
+		*				measurements : variable used to store the measurements, used for output
+		*				jPreviousConfig : previous configuration read from file
+		*
+		* Description: 
+		*   If a previous configuration is available, insert all the indicated vertices. Else make it empty for the beginning
+		*/
 		Trace(json const& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig) :
 		beta_(jNumericalParams["beta"]),
 		U_(jNumericalParams["U"]),
@@ -126,7 +161,20 @@ namespace Tr {
 			if(operators(1).size()%4 &&  operators(1).begin()->type()) sign *= -1;
 			return sign;
 		};
-		
+		/** 
+		* 
+		* double insert(int spin, Ut::UniformRngType& urng)
+		* 
+		* Parameters :	spin : spin of the new vertex
+		*				urng : probabiliy distribution
+		*
+		* Return Value : the Metropolis Hastings acceptation rate for the site part 
+		*
+		* Description: 
+		*   In this function we want to add a new vertex. 
+		* 	To do so, we choose what type of vertex and where to insert it.
+		*	We then insert it and compute the part of the acceptation rate relative to this site only and return it.
+		*/
 		double insert(int spin, Ut::UniformRngType& urng) {
 			Operators& ops = *operators_[spin]; Operators& opsOther = *operators_[1 - spin]; 
 			
@@ -162,7 +210,17 @@ namespace Tr {
 		    if(opsOther.size()) return (lenght_[1 - spin] + lenghtDiff_)*mu_ - overlapDiff_*U_ - logTr0(lenght_[1 - spin]) + qRatio; 
 			return logTr0(lenghtDiff_) - logTr00_ + qRatio;
 		};
-		
+		/** 
+		* 
+		* int acceptInsert(int spin)
+		* 
+		* Parameters :	spin : spin of the new vertex
+		*
+		* Return Value : the sign change according to the ordering of the operators 
+		*
+		* Description: 
+		*	It updates the overlap and occupation observables for the site.
+		*/
 		int acceptInsert(int spin) {
 			lenght_[spin] += lenghtDiff_;
 			overlap_ += overlapDiff_;
@@ -172,11 +230,34 @@ namespace Tr {
 			return op_ < opDagg_ ? 2*spin - 1 : 1 - 2*spin;
 		};
 		
+		/** 
+		* 
+		* void rejectInsert(int spin)
+		* 
+		* Parameters :	spin : spin of the new vertex
+		*
+		* Description: 
+		*	It removes the operators we inserted in the insert function, as the update was rejected.
+		*/
 		void rejectInsert(int spin) {
 			operators_[spin]->erase(op_);
 			operators_[spin]->erase(opDagg_);
 		};
 		
+		/** 
+		* 
+		* double erase(int spin, Ut::UniformRngType& urng)
+		* 
+		* Parameters :	spin : spin of the vertex to remove
+		*				urng : probabiliy distribution
+		*
+		* Return Value : the Metropolis Hastings acceptation rate for the site part 
+		*
+		* Description: 
+		*   In this function we want to remove a vertex. 
+		* 	To do so, we choose what vertex we want to remove (accoring to urng).
+		*	We then compute the part of the acceptation rate relative to this site only and return it.
+		*/
 		double erase(int spin, Ut::UniformRngType& urng) {
 			Operators const& ops = operators(spin); Operators const& opsOther = operators(1 - spin); 
 			
@@ -216,6 +297,17 @@ namespace Tr {
 			} 
 		};
 	
+		/** 
+		* 
+		* int acceptErase(int spin)
+		* 
+		* Parameters :	spin : spin of the vertex to remove
+		*
+		* Return Value : the sign change according to the ordering of the operators 
+		*
+		* Description: 
+		*	It updates the overlap and occupation observables for the site.
+		*/
 		int acceptErase(int spin) {
 			lenght_[spin] += lenghtDiff_; 
 			overlap_ += overlapDiff_;
@@ -230,12 +322,28 @@ namespace Tr {
 		
 		void rejectErase(int spin) {			
 		};
-		
+		/** 
+		* 
+		* void flip()
+		*
+		* Description: 
+		*	It flips the operators for the two spins and also the lenght_ which is directly a function of the operators
+		*/
 		void flip() {
 			std::swap(lenght_[0], lenght_[1]);
 			std::swap(operators_[0], operators_[1]);
 		};
 		
+		/** 
+		* 
+		* measure(int sign) 
+		* 
+		* Parameters :	sign : the sign of the system in order to compute sign*observables
+		*
+		* Description: 
+		*   Computes all the observables for the site (Occupation, Double Occupation, Spin, Chi) 
+		* 
+		*/
 		std::valarray<Ut::complex>& measure(int sign) {
 			chiTemp_ = 0; //We reset the temporary Chiij to make sure we don't make mistakes later
 			acc_.k += sign*((operators(0).size() + operators(1).size())/2.);
@@ -280,7 +388,7 @@ namespace Tr {
 			}
 			
 			if(acc_.Chi.size() > 1) {
-				//In this part, we accumulate data for computing the spin susceptibility. According to the formula in PhysRevB.75.155113 for every site we only keep the sum over l and not the modulus square in order to the multiply across sites
+				//In this part, we accumulate data for computing the spin susceptibility. 
 				if(!toChi_) {     //So wies aussieht haben wir hier glueck: keine fall unterschiedung fŸr 0 expansions ordnung nštig fuer finites omega					
 					toChi_ = new Ut::complex[acc_.Chi.size()];
 					
@@ -306,19 +414,35 @@ namespace Tr {
 				}
 
 				for(unsigned int n = 1; n < acc_.Chi.size(); ++n){ 
+					//According to the formula in PhysRevB.75.155113 for every site we only keep the sum over l and not the modulus square in order to multiply across sites
 					chiTemp_[n] = toChi_[n]; 
+
 					acc_.Chi[n] += sign*(toChi_[n].real()*toChi_[n].real() + toChi_[n].imag()*toChi_[n].imag());				
 				}
 			}
 			return chiTemp_;
 		};
 		
-		void measure(Ut::Measurements& measurements, int site, Meas& meas, int NAlpsMeas) {
-			acc_.k /= NAlpsMeas; 
-			acc_.N /= NAlpsMeas; 
-			acc_.Sz /= NAlpsMeas; 
-			acc_.D /= NAlpsMeas; 
-			acc_.Chi /= NAlpsMeas;
+		/** 
+		* void store(Ut::Measurements& measurements, int site, Meas& meas, int NMeas)
+		* 
+		* Parameters :	measurements : variable used to store the measurements, used for output
+		*				site : number of the site (because we don't store it in the Object)
+		*				meas : measurement object of the entire simulation
+		*				NMeas : Number of measurements done since the last time we stored some measurements
+		*
+		* Description: 
+		* 	Computes the mean over all measurements done since the last time we stored them.
+		*   Stores the measurements for this site in the handler.
+		*	Adds the site measurements to the measurements of the entire simulation
+		*	Resets the measurements for the next round of measurements
+		*/
+		void sotre(Ut::Measurements& measurements, int site, Meas& meas, int NMeas) {
+			acc_.k /= NMeas; 
+			acc_.N /= NMeas; 
+			acc_.Sz /= NMeas; 
+			acc_.D /= NMeas; 
+			acc_.Chi /= NMeas;
 			
 			std::string s = std::to_string(site);
 			measurements["k_" + s] << acc_.k;
@@ -342,7 +466,16 @@ namespace Tr {
 		}
 		std::valarray<double>& getChi(){
 			return acc_.Chi;
-		}	
+		}
+		/** 
+		* void saveConfig(json& jConfig,int site)
+		* 
+		* Parameters :	jConfig : Object in which the configuration should be saved
+		*				site : number of the site (because we don't store it in the Object)
+		*
+		* Description: 
+		* 	Saves the current simulation state (the segement operators) to the jConfig object.
+		*/	
 		void saveConfig(json& jConfig,int site) {
 			json jConfigSite;
 			for(int spin = 0; spin < 2; ++spin) {
@@ -407,7 +540,19 @@ namespace Tr {
 		inline double control(double tau) {
 			return tau <= .0 ? tau + beta_ : tau;
 		};
-		
+		/** 
+		* double otherLenght(Operators const& opsOther, Operator const& opLow, Operator const& opUp)
+		* 
+		* Parameters :	opsOther : all the operators for the opposite spin
+		*				opLow : operator with the lowest time
+		*			 	opUp : operator with the highest time
+		*
+		* Return Value : The overlap time between this vertex and all vertex of the opsOther table
+		*
+		* Description: 
+		* 	We assume 0 < opLow.time() < opUp.time() < beta
+		* 	Iterates over all operators in OpsOther to find the Double occupation associated with this pair of operators
+		*/
 		double otherLenght(Operators const& opsOther, Operator const& opLow, Operator const& opUp) { 
 			if(opsOther.size()) {
 				Operators::const_iterator it = opsOther.upper_bound(opLow);
@@ -428,6 +573,20 @@ namespace Tr {
 				return .0;
 		};
 		
+		/** 
+		* double otherLenghtWO(Operators const& opsOther, Operator const& opLow, Operator const& opUp)
+		* 
+		* Parameters :	opsOther : all the operators for the opposite spin
+		*				opLow : operator with the highest time
+		*			 	opUp : operator with the lowest time
+		*
+		* Return Value : The overlap time between this vertex and all vertex of the opsOther table
+		*
+		* Description:
+		* 	We assume 0 < opUp.time() < opLow.time() < beta
+		*	This has the same effect as otherLenght above, except the operators are inverted.
+		* 	So we compute the overlap from opLow.time() to beta an then from 0 to opUp.time()
+		*/
 		double otherLenghtWO(Operators const& opsOther, Operator const& opLow, Operator const& opUp) {
 			if(opsOther.size()) {
 				Operators::const_iterator it = opsOther.upper_bound(opLow);
@@ -456,6 +615,13 @@ namespace Tr {
 			return l*mu_ + std::log(1. + exp) + (arg > .0 ? arg : .0);
 		};
 		
+		/** 
+		* void set()
+		*
+		* Description:
+		* 	This function computes the occupation length and the overlap directly from the operators. (instead of the usual step by step approach)
+		* 	This can be used at loading time to start the simulation or whenever is needed to recompute from scratch the overlap and the occupation
+		*/
 		void set() {
 			std::set<std::pair<Operator, int> > temp;
 			std::vector<int> isSeg(2);

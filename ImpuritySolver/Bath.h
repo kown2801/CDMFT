@@ -48,6 +48,21 @@ namespace Ba {
 	}
 	
 	struct Bath {
+		/** 
+		* 
+		* struct GreenIterator
+		* 
+		* Parameters :	opBegin : the operator which is at the beginning of the Green function matrix
+		*				opEnd : the after last operator of the row 
+		*				opDagg : the dagger operator (the rwo of the green's function matrix
+		*				value : pointer on the value of the matrix at Green[opBegin,opDagg]
+		* 
+		* Description :
+		*	This is a custom iterator over a Green's function matrix.
+		*	This allow iteration over the Green function matrix in C++ standard while being able to know which component we are looking at (which operators are involved)
+		*	opEnd allows the program to know when to go to the next row when reaching the last operators of the list to avoid Segmentation error or Access Violation.
+		* 
+		*/
 		struct GreenIterator {
 			GreenIterator(Operator const* opBegin, Operator const* opEnd, Operator const* opDagg, double const* value) : opBegin_(opBegin), opEnd_(opEnd), opR_(opBegin), opL_(opDagg), value_(value) {};
 			Operator const& opR() const { return *opR_;};
@@ -71,7 +86,24 @@ namespace Ba {
 		
 		//template<typename T, typename L> Bath(int spin, std::vector<Tr*>::const_iterator begin, std::vector<Tr*>::const_iterator end, L const& link) {
 		//};
-		
+		/** 
+		* 
+		* template<typename L> double insert(int site, double time, int* ptr, double timeDagg, int* ptrDagg, L const& link)
+		* 
+		* Parameters :	site : site on which the vertex is added
+		*				time : time of the annhilation operator
+		*				ptr : pointer to the annihilation operator (only used to create the Operator)
+		*				timeDagg : time of the creation operator
+		*				ptrDagg :  pointer to the creation operator (only used to create the Operator)
+		*				link : link function to get the hybridization function between sites
+		* 
+		* Return value : Returns log(|G[op_time,op_timeDagg]|) in the new configuration
+		*
+		* Description: 
+		*   Computes G[op_time,op_timeDagg] in the new configuration if we added a site. This operation doesn't affect the Green's matrix. 
+		*	The value will be used to determine the accept probability
+		* 
+		*/
 		template<typename L> double insert(int site, int spin, double time, int* ptr, double timeDagg, int* ptrDagg, L const& link) {
 			opR_ = Operator(site, spin, time, ptr); 
 			opL_ = Operator(site, spin, timeDagg, ptrDagg);
@@ -96,7 +128,15 @@ namespace Ba {
 			
 			return std::log(std::abs(val_));
 		}; 
-		
+		/* 
+		* int acceptInsert()
+		* 
+		* Return value : The sign of the coefficient G[op_time,op_timeDagg] that we just inserted
+		*
+		* Description: 
+		*  	This function accepts the insertion of a new vertex. Therefore, we have to change the matrix B_ to include the new vertex. (the Green function Matrix)
+		*	In order to avoid computing an inverse every time, we use the shermann morisson formula to compute the new B_
+		*/
 		int acceptInsert() {
 			int const N = opsL_.size();
 			int const newN = N + 1;
@@ -136,7 +176,20 @@ namespace Ba {
 			
 			return val_ > .0 ? 1 : -1;
 		};
-		
+		/** 
+		* 
+		* double erase(int site, double time, double timeDagg)
+		* 
+		* Parameters :	site : Site of the vertex to remove
+						time : time of the annhilation operator
+						timeDagg : time of the creation operator
+		* 
+		* Return value : Returns log(|G[op_tim,op_timeDagg]|) in the old configuration
+		*
+		* Description: 
+		*   Prepares the erase of a pair of operators by getting the right vertex (using site and time to look for it) and the value of its green's function
+		*	We keep in memory which vertex we were trying to erase
+		*/
 		double erase(int site, int spin, double time, double timeDagg) {
 			Operator dummyR(site, spin, time, 0);
 			Operator dummyL(site, spin, timeDagg, 0);
@@ -149,7 +202,15 @@ namespace Ba {
 
 			return std::log(std::abs(val_ = B_->at(posR_, posL_)));
 		};
-		
+		/* 
+		* int acceptErase()
+		* 
+		* Return value : The sign of the old G[op_time,op_timeDagg] coefficient
+		*
+		* Description: 
+		*  	This function accepts the erase of a new vertex. Therefore, we have to change the matrix B_ to remove this vertex. (the Green function Matrix)
+		*	Here, we want to make B_ smaller using again the Shermann Morisson formula
+		*/
 		int acceptErase() {
 			int const N = opsL_.size(); int const newN = N - 1;
 			
@@ -183,7 +244,15 @@ namespace Ba {
 			
 			return val_ > .0 ? 1 : -1;
 		};
-		
+		/* 
+		* template<class L>
+		* int rebuild(L const& link)
+		* 
+		* Return value : The sign of the matrix determinant
+		*
+		* Description: 
+		*  	This function rebuilds the Green function Matrix from the link function. It also computes the determinant of the matrix
+		*/
 		template<class L>
 		int rebuild(L const& link) {			
 			int const N = opsL_.size();

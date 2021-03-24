@@ -23,7 +23,26 @@ namespace Ma {
 		static void print_copyright(std::ostream& out) {
 			out << "lall, schwaetz, d.h. vorallem dings wenn's z'streng wird." << std::endl << std::endl;
 		};
-		
+
+		/** 
+		* 
+		* MarkovChain(json const& jNumericalParams, json const& jHyb, json const& jLink,Ut::Simulation& simulation)
+		* 
+		* Parameters :	jNumericalParams : storage of all the numerical parameters of the simulation
+		*				jHyb : storage of the hybridization informations (read more in README.MD)
+		*				jLink : storage of the link informations (read more in README.MD)
+		*				simulation : Object used to store the parameters and the measurements throughout the simulation
+		* 
+		* Prints :	the SEED of the QMC program
+		*			any error related to mismatches between the parameters in different files
+		*			if the config files do not exist
+		*
+		* Description: 
+		*   The Markovchain constructor is used to initialize the simulation.
+		*	If the config file for the current processor is located in the outputFolder, it loads the operators from this file for the starting point
+		*	Else the program starts with an empty segment picture
+		* 
+		*/
 		MarkovChain(json const& jNumericalParams, json  const& jHyb, json const& jLink, Ut::Simulation& simulation) :
 		simulation_(simulation),
 		node_(mpi::rank()),
@@ -94,7 +113,19 @@ namespace Ma {
 				}
 			}
 		}
-		
+		/** 
+		* 
+		* void doUpdate()
+		*
+		* Description: 
+		*   Suggests and accepts updates on the segment picture. This is the function that is used the most in the program. Updates are also called Sweeps
+		*	The possible updates are : 
+		*		Spin flipping of a site (completely flips the up and down operators)
+		*		Flipping all the operators of two sites
+		*		Removing a pair of operators
+		*		Inserting a new pair of operators
+		* 
+		*/
 		void doUpdate() { 
 			int const site = static_cast<int>(urng_()*nSite_);
 
@@ -111,7 +142,15 @@ namespace Ma {
 					insert(site, spin);
 			};
 		};
-		
+		/** 
+		* 
+		* void measure()
+		*
+		* Description: 
+		*	Saves the observables on each sites and in the bath.
+		*	We do something special for Chi the susceptibility as it is computed across sites. 
+		* 
+		*/
 		void measure() {
 			int const sign = signTrace_*signBath_;
 			
@@ -136,16 +175,27 @@ namespace Ma {
 			
 			link_.measure(sign, bath_->begin(), bath_->end());
 		};
+		/** 
+		* 
+		* void store(Ut::Measurements& measurements, int measurementsFromLastStore)
+		* 
+		* Parameters :	measurements : variable used to store the measurements, used for output
+		*				measurementsFromLastStore : Number of measurements done since the last time we stored some measurements
+		*
+		* Description: 
+		*   Stores the measurements in the handler.
+		*	Resets the measurements for the next round of measurements
+		* 
+		*/
+		void store(Ut::Measurements& measurements, int measurementsFromLastStore) {
 		
-		void measure(Ut::Measurements& measurements, int NAlpsMeas) {
-			//std::cout << accSign_/NAlpsMeas << std::endl;
+			measurements["Sign"] << accSign_/measurementsFromLastStore; accSign_ = 0;
 			
-			measurements["Sign"] << accSign_/NAlpsMeas; accSign_ = 0;
-			
-			pK_ /= NAlpsMeas;
-		    	measurements["pK"] << pK_;
+			pK_ /= measurementsFromLastStore;
+		    measurements["pK"] << pK_;
 			pK_ = .0;
 
+			/*****************************************************************************/
 			//The processing of the spin susceptibility is a little bit more complicated
 			std::valarray<Ut::complex> temp = accChiij_[std::slice(0,nSite_*nSite_,acc_.Chi.size())];
 			temp /= beta_;
@@ -163,12 +213,13 @@ namespace Ma {
 			        temp *= beta_/((2*n*M_PI)*(2*n*M_PI));
 				accChiijReal_[std::slice(n,nSite_*nSite_,acc_.Chi.size())] = temp;
 			}
-			accChiijReal_ /= NAlpsMeas;
+			accChiijReal_ /= measurementsFromLastStore;
 			measurements["Chiij"] << accChiijReal_;
 			accChiij_ = .0;
 			//End of processing of the spin susceptibility
+			/*****************************************************************************/
 
-			for(int site = 0; site < nSite_; ++site) trace_[site]->measure(measurements, site, acc_, NAlpsMeas);
+			for(int site = 0; site < nSite_; ++site) trace_[site]->store(measurements, site, acc_, measurementsFromLastStore);
 			
 			acc_.N /= nSite_;
 			acc_.Sz /= nSite_;
@@ -190,13 +241,28 @@ namespace Ma {
 			acc_.D = .0;
 			acc_.Chi = .0;
 
-			link_.measure(measurements, NAlpsMeas);	
+			link_.store(measurements, measurementsFromLastStore);	
 		};
-		
+		/** 
+		* 
+		* void cleanUpdate()
+		*
+		* Description: 
+		*	Due to numerical error in the Shermann Morisson formula, we need to rebuild the entire bath matrix from time to time
+		*	Because this is an expensive operation, we don't do this operation too often
+		* 
+		*/
 		void cleanUpdate() { 
 			signBath_ = bath_->rebuild(link_);
 		};
-		
+		/** 
+		* 
+		* ~MarkovChain()
+		* 
+		* Description: 
+		*	Saves the current configuration in the config files to be able to resume the simulation. 
+		* 
+		*/
 		~MarkovChain() {
 			for(int site = 0; site < nSite_; ++site) {
 				std::cout << site << "Up:  " << updateAcc_[2*site]/static_cast<double>(updateTot_[2*site]) << std::endl;
@@ -241,7 +307,7 @@ namespace Ma {
 		std::valarray<double> pK_;
 		Tr::Meas acc_;
 		std::valarray<Ut::complex> accChiij_;//This valarray has a weird structure. It contains Chiij for all bosonic Matsubara frequencies. Sorted first by sites indices and then Matsubara frequencies.
-											//accChiij_[(i*nSite_ + j)*acc_.chi.size() + n] give Chi(i,j,i\oemga_n)
+											//accChiij_[(i*nSite_ + j)*acc_.chi.size() + n] give Chi(i,j,i\omega_n)
 		std::valarray<double> accChiijReal_;//As we can only save real numbers, we need a second array to store it
 		
 		std::vector<double> updateAcc_;
@@ -249,7 +315,18 @@ namespace Ma {
 		int updateFlipAcc_;
 		int updateFlipTot_;
 			
-		
+		/** 
+		* 
+		* void insert(int site, int spin)
+		* 
+		* Parameters :	site : site number
+		*				spin : spin
+		*
+		* Description:
+		*   Tries to insert a new pair of operators in the imaginary time line
+		*	Accepts or reject the insertion according to the Metropolis Hastings acceptation rate.
+		* 
+		*/
 		void insert(int site, int spin) {
 			Tr::Trace& trace = *trace_[site];
 			Ba::Bath& bath = *bath_;
@@ -269,7 +346,18 @@ namespace Ma {
 			
 			trace.rejectInsert(spin);
 		};
-		
+		/** 
+		* 
+		* void erase(int site, int spin)
+		* 
+		* Parameters :	site : site number
+		*				spin : spin
+		*
+		* Description: 
+		*   Tries to erase a a pair of operators in the imaginary time line.
+		*	Accepts or reject the erase according to the Metropolis Hastings acceptation rate.
+		* 
+		*/
 		void erase(int site, int spin) {
 			Tr::Trace& trace = *trace_[site];
 			Ba::Bath& bath = *bath_;
@@ -289,12 +377,33 @@ namespace Ma {
 			
 			trace.rejectErase(spin);
 		};
-		
+		/** 
+		* 
+		* void flipSpin(int site)
+		* 
+		* Parameters :	site : site number
+		*
+		* Description: 
+		*  	Tries to flip the spins of one site.
+		*	Accepts or reject the flip according to the result of the tryFlip() function.
+		* 
+		*/
 		void flipSpin(int site) {
 		    trace_[site]->flip();
 		    if(!tryFlip()) trace_[site]->flip();
 		};
-		
+		/** 
+		* 
+		* void flipSite(int siteA, int siteB)
+		* 
+		* Parameters :	siteA : first site number
+		*				siteB : second site number
+		*
+		* Description: 
+		*  	Tries to flip all the operators of two sites.
+		*	Accepts or reject the flip according to the result of the tryFlip() function.
+		* 
+		*/
 		void flipSite(int siteA, int siteB) {
 			//Don't allow the same site (siteB is in [0,nSite_-2])
 			if(siteA == siteB){
@@ -304,6 +413,23 @@ namespace Ma {
 			if(!tryFlip()) std::swap(trace_[siteA], trace_[siteB]);
 		};
 		
+
+		/** 
+		* 
+		* int tryFlip()
+		* 
+		* Return Value : returns 1 if the flip is accepted
+		*				 returns 0 if the flip is not accepted  
+		* Description: 
+		*	Fills new bath with the flipped operators
+		*  	Computes the Metropolis Hastings Acceptation rate for the flip using the old and the new baths.
+		* 	The flip procedure needs a cleanUdpate of the bath matrix and is therefore pretty expensive
+		*	In case the flip is accepted : 
+		*		the new bath matrices are updated with their new values (rebuild)
+		*		the signs are correctly set
+		*		the simulation can continue without anything else
+		*
+		*/
 		int tryFlip() {
 			Ba::Bath* newBath = new Ba::Bath();
 			
@@ -318,6 +444,7 @@ namespace Ma {
 			newBath->rebuild(link_);
 		
 			if(urng_() < std::abs(newBath->det()/bath_->det())) {
+				//We accept the new bath and get rid of the old bath
 				signTrace_ = 1;
 				for(std::vector<Tr::Trace*>::iterator it = trace_.begin(); it != trace_.end(); ++it)
 					signTrace_ *= (*it)->sign();
@@ -330,6 +457,7 @@ namespace Ma {
 				
 				return 1;
 			};
+			//the new bath is not accepted and destroyed
 			delete newBath;
 			
 			return 0;

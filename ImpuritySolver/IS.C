@@ -23,8 +23,7 @@ int main(int argc, char** argv)
 		Ma::MarkovChain* markovChain = 0;
 		
 		{	
-			//Reading all the input files and keeping in memory the output filename
-
+			//Reading all the input files and creating the Markov Chain at Ma::MarkovChain
 			json jHyb;
 			std::string hybFileName = jParams["HYB"];
 			mpi::read_json(inputFolder + hybFileName, jHyb);
@@ -35,8 +34,10 @@ int main(int argc, char** argv)
 			markovChain = new Ma::MarkovChain(jParams, jHyb, jLink, simulation);
 		}
 
+		//Start the simulation 
 		MC::MonteCarlo(*markovChain, simulation);
 		
+		//End of simulation
 		delete markovChain; markovChain = 0;
 		
 		mpi::cout = mpi::every;

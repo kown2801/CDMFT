@@ -14,6 +14,22 @@
 
 namespace Link {
 	struct Link {
+	/** 
+		* 
+		* Link(json const& jNumericalParams, json const& jHyb, json const& jLink, Ut::Measurements& measurements)
+		* 
+		* Parameters :	jNumericalParams : storage of all the numerical parameters of the simulation
+		*				jHyb : storage of the hybridization informations (read more in README.MD)
+		*				jLink : storage of the link informations (read more in README.MD)
+		*				simulation : Object used to store the parameters and the measurements throughout the simulation
+		* 
+		* Prints :	The status of the initialization and whether it was able to read in different files
+		*
+		* Description: 
+		*   Constructs the hyb function from the Link and Hyb files (making it possible to read the hybridation function between each sites)
+		*	Reserves some space for the green function to be saved in
+		* 
+		*/
 		Link(json const& jNumericalParams, json const& jHyb, json const& jLink, Ut::Measurements& measurements) : 
 		beta_(jNumericalParams["beta"]), 
 		//The Link object includes spins up and down so the number of site is half the Link array size
@@ -68,7 +84,15 @@ namespace Link {
 				new(green_ + it->second) Green::Meas(it->first, jNumericalParams, measurements);
 			}
 		};
-		
+		/** 
+		* 
+		* double operator()(Op const& opL, Op const& opR) const
+		* 
+		* Parameters :	opL,opR : operators onwhich we eant the Hybridiation function
+		* 
+		* Return Value : The value of the hybridation function between the two operators at time time
+		* 
+		*/
 		template<class Op> double operator()(Op const& opL, Op const& opR) const { 
 			Entry entry = hybEntry_[(opL.spin()*nSite_ + opL.site()) + 2*nSite_*(opR.spin()*nSite_ + opR.site())];
 			
@@ -85,7 +109,20 @@ namespace Link {
 			
 			return .0;
 		};
-				
+				/** 
+		* 
+		* template<class GreenIterator>
+		* void measure(int sign, GreenIterator begin, GreenIterator end)
+		* 
+		* Parameters :	sign : current sign of the bath
+		*				begin : start of the green matrix
+		*				end : end of the green matrix
+		* 
+		* Description :
+		*	Adds the current green function value to the green function measurements
+		*	For each element in the Green matrix (between begin and end), adds its contribution to the imaginary time green's function.
+		* 
+		*/	
 		template<class GreenIterator>
 		void measure(int sign, GreenIterator begin, GreenIterator end) {
 			for(GreenIterator it = begin; it != end; ++it) {
@@ -104,10 +141,20 @@ namespace Link {
 				}
 			}
 		};
-		
-		void measure(Ut::Measurements& measurements, int NAlpsMeas) {
+		/** 
+		* 
+		* void store(Ut::Measurements& measurements, int measurementsFromLastStore)
+		* 
+		* Parameters :	measurements : variables used to store the measurements, used for output
+		*				measurementsFromLastStore : Number of measurements done simce the last time we stored some measurements
+		* 
+		* Description :
+		*	Stores the measurements for every green's component
+		* 
+		*/
+		void store(Ut::Measurements& measurements, int measurementsFromLastStore) {
 			for(unsigned int i = 0; i < multiplicity_.size(); ++i) 
-				green_[i].measure(measurements, multiplicity_[i]*NAlpsMeas);
+				green_[i].measure(measurements, multiplicity_[i]*measurementsFromLastStore);
 		};
 		
 		~Link() { 

@@ -16,6 +16,7 @@ namespace mpi {
 	//-----------------------------------------------------------------------------------------------------------------------------------------------------
 	int const master = 0;
 	
+	/* Returns the rank of the current processor in the processor world*/
 	int rank() {
 		int temp = 0;
 		
@@ -26,6 +27,7 @@ namespace mpi {
 		return temp;
 	};
 	
+	/* Returns the number of processors in the processor world*/
 	int number_of_workers() {
 		int temp = 1;
 		
@@ -35,7 +37,7 @@ namespace mpi {
 		
 		return temp;
 	};
-	
+	/* Reads a json file on the main processor and distributes it to the other processors */
 	void read_json(std::string name, json& jObject) {
 		int size;
 		std::string buffer;
@@ -65,6 +67,7 @@ namespace mpi {
 		jObject = json::parse(&buffer[0],&buffer[0] + size);
 	}	
 	
+	/* Write a json file. It waits for all processors to finish writing before continuing*/
 	void write_json(std::string name,json const& jObject) {
 		if(rank() == master) {
 			IO::writeJsonToFile(name,jObject,true);
@@ -73,6 +76,9 @@ namespace mpi {
 		MPI_Barrier(MPI_COMM_WORLD);
 #endif
 	};
+	/* All those functions from here have the same effect. They correspond to different datatypes */
+	/* Collects toTransmit on all processors and sums them.*/
+	/* For this one, the result is available only on the first processor */
 	void reduce(std::valarray<double> &toTransmit,std::valarray<double> &toReceive){
 #ifdef HAVE_MPI
 			MPI_Reduce(&toTransmit[0], mpi::rank() == mpi::master ? &toReceive[0] : 0, toTransmit.size(), MPI_DOUBLE, MPI_SUM, mpi::master, MPI_COMM_WORLD);	
@@ -80,6 +86,7 @@ namespace mpi {
 			toReceive = toTransmit;
 #endif
 	}
+	/* For this one, the result is available only on the first processor */
 	void reduce(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
 			MPI_Reduce(&toTransmit,&toReceive,1, MPI_INT, MPI_SUM, mpi::master, MPI_COMM_WORLD);	
@@ -87,6 +94,7 @@ namespace mpi {
 			toReceive = toTransmit;
 #endif
 	}
+	/* For this one, the result is available only all processors */
 	void allReduce(std::valarray<double> &toTransmit,std::valarray<double> &toReceive){
 #ifdef HAVE_MPI
 			MPI_Allreduce(&toTransmit[0], &toReceive[0], toTransmit.size(), MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);	
@@ -94,6 +102,7 @@ namespace mpi {
 			toReceive = toTransmit;
 #endif
 	}
+	/* For this one, the result is available only all processors */
 	void allReduce(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
 			MPI_Allreduce(&toTransmit, &toReceive, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);	
@@ -102,6 +111,8 @@ namespace mpi {
 #endif
 	}
 
+	/* For this one, insetad of summing, we take the maximum among the values. */
+	/* For this one, the result is available only all processors */
 	void getMax(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
 			MPI_Allreduce(&toTransmit, &toReceive, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);	
@@ -110,7 +121,8 @@ namespace mpi {
 #endif
 	}
 
-
+	/* Reads  a json on all processors. Different file name should be used in order to avoid conflicts. */
+	/* This is perfect for the config files for example */
 	void read_json_all_processors(std::string name, json& jObject) {
 		IO::readJsonFile(name,jObject);
 	}	

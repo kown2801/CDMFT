@@ -59,11 +59,18 @@ namespace Ut {
 
 struct Observable {
 		Observable() : counter_(0) {};
-		
-		void add(std::valarray<double> const& val) { 
-			add_binning(val);
-		};
-		void add_binning(std::valarray<double> const& x){
+		/** 
+		* 
+		* void add(std::valarray<double> const& val)
+		* 
+		* Parameters :	val : input array to store in the measurements
+		* 
+		* Description: 
+		*   Stores the measurements. It is a bit complicated because we want to do a binning analysis in order to get an accurate approximation of the error
+		* 	We store the sum of measurements but also the sum of the squares of the measurements.
+		*	This is a direct copy of the ALPS library
+		*/
+		void add(std::valarray<double> const& x){
   		    // set sizes if starting additions
   		    if(counter_==0)
   		    {
@@ -115,6 +122,7 @@ struct Observable {
   		        }
   		    } while (i>>=1);
 		}
+		/* START of helper functions to conmpute the error correctly */
 		uint64_t binning_count() const {return counter_;} // number of measurements performed
 		std::valarray<double> binsum(std::size_t i) const
 		{
@@ -137,10 +145,24 @@ struct Observable {
 		{
 		  return sum_[0];
 		}
-		/* In this function, we take all the measurements we have on all the processors and regroup them on the master processor
-		 * From this data, we compute the mean and the binning error (on the single processors and also between the processors)
-		 * We save save it to two json objects to be able to save them to a file
-		 * */
+		/* End of helper functions */
+
+		/** 
+		* 
+		* void reduce(json& jMeas,json& jErrors)
+		* 
+		* Parameters :	jEntry : storage point of the computed observables for printing in the ouput file
+		*				jMeas : storage point of the errors of the observables for printing in the ouput file
+		* 
+		* Description: 
+		*   Takes all the measured quantities from all running simulations in the MPIWorld together to a single value for the output file.
+		* 	To do this, we sum all the measurements for this observable over the MPIWorld and divide by the total number of measurements
+		*	We then add the entry to the output file. This is fairly easy to do here.
+		* 	Then we want to compute the error. This is a bit more difficult.
+		* 	We do a binning analysis using the conserved quantities computed in add on the single processors and also between them.
+		*	We then save the error in the jErrors object. 
+		* 	If you want to know more, the process is detailed in the function. 
+		*/
 		void reduce(json& jMean,json& jErrors) {
 			
 			if(counter_ < 2)
@@ -194,7 +216,7 @@ struct Observable {
 				mpi::reduce(binningSquaredSum,accBinningSquaredSum);//getting the total squared sum for the binning level
 				mpi::reduce(binningSum,accBinningSum);//getting the total sum for the binning level
 
-				//We compute the error on the firsy processors and save it to the accBinningErrs array
+				//We compute the error on the first processors and save it to the accBinningErrs array
 				if(mpi::rank() == mpi::master) {
 					std::valarray<double> accBinningErr = std::sqrt((accBinningSquaredSum/double(accNbTerms-1) - accBinningSum*accBinningSum/(double(accNbTerms-1)*double(accNbTerms)))/double(accNbTerms));
 					accBinningErrs.insert(accBinningErrs.end(),std::begin(accBinningErr),std::end(accBinningErr));
@@ -202,8 +224,8 @@ struct Observable {
 			}
 
 			//Then we want to get the error (and maybe some error convergence) thanks to our multiple processors
-			//We need a list of all means and measurement counts
-			//We also need to gather all the data in a one dimensional vector and then put in a vector of valarray (needed for MPI_Gather)
+				//We need a list of all means and measurement counts
+				//We also need to gather all the data in a one dimensional vector and then put in a vector of valarray (needed for MPI_Gather)
 			std::valarray<double> allBinningSumsGather(static_cast<double>(0),mpi::number_of_workers()*binningSum.size());
 #ifdef HAVE_MPI
 			MPI_Gather(&binningSum[0],binningSum.size(),MPI_DOUBLE,&allBinningSumsGather[0],binningSum.size(), MPI_DOUBLE,0,MPI_COMM_WORLD);	
@@ -216,7 +238,7 @@ struct Observable {
 #else
 			allBinningCounts[0] = counter_;
 #endif
-			//We do a binning analysis on the collected data (is it really necessary when the processors are supposed to have independent simulations ?)
+				//We do a binning analysis on the collected data (is it really necessary when the processors are supposed to have independent simulations ?)
 			if(mpi::rank() == mpi::master) {
 				//We need to put the Sums into a vector of valarray : 	
 				std::vector<std::valarray<double> > allBinningSums;
@@ -278,7 +300,17 @@ struct Observable {
 	void operator<<(Observable& obs, std::valarray<double> const& val) { obs.add(val);};
 	
 	typedef std::map<std::string, Observable> Measurements;
-
+	/** 
+	* 
+	* struct Simulation
+	* 
+	* Description: 
+	*   Object for handling the simulation.
+	* 	It allows to : 
+	*		Store the input parameters
+	* 		Output all the parameters and measurements to the output file
+	* 
+	*/
 	struct Simulation {
 		Simulation(std::string inputFolder,std::string outputFolder,std::string name) : name_(name), outputFolder_(outputFolder) {
 			{
@@ -291,7 +323,19 @@ struct Observable {
 		json const& params() { return jParams_;};
 		json& jobspecs() { return jJobSpecs_;};
 		Measurements& meas() { return measurements_;};
-		
+		/** 
+		* 
+		* void save(uint64_t thermalization_sweeps, uint64_t measurement_sweeps)
+		* 
+		* Parameters :	thermalization_sweeps : number of thermalization sweeps
+						measurement_sweeps : number of thermalization sweeps (just kidding, number of measurement sweeps)
+		* 
+		* Description: 
+		*   Saves all the measurements and parameters to file.
+		* 	First rounds up all the data from all processors.
+		*	Then, writing the file is done only on processor 1 to avoid collisions and nonesensical data.
+		* 
+		*/
 		void save(uint64_t thermalization_sweeps,uint64_t measurement_sweeps) {
 			int64_t acc_thermalization_sweeps;
 			uint64_t acc_measurement_sweeps;

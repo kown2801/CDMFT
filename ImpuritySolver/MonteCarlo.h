@@ -42,7 +42,23 @@ namespace MC {
 	};
 	
 #endif
-	
+	/** 
+	* 
+	* void MonteCarlo(Ma::MarkovChain& markovchain, Ut::Simulation& simulation)
+	* 
+	* Parameters :	markovchain : initialized markovchain, the one that does all the job
+	*				simulation : Object used to store the parameters and the measurements throughout the simulation
+	* 
+	* Return Value : Nothing 
+	*
+	* Prints : the times at which the thermalization starts, the measurements starts, the simulation saves, the simulation finishes
+	* 
+	* Description: 
+	* 
+	*    The MonteCarlo Function is the engine of the QMC Simulation
+	*    It allows to monitor the number of sweeps, measurements and storing points throughout the simulation.
+	* 
+	*/
 	void MonteCarlo(Ma::MarkovChain& markovChain, Ut::Simulation& simulation) //Lauching the program
 	{	
 		std::time_t time;
@@ -93,7 +109,7 @@ namespace MC {
 				markovChain.measure();
 				measurementsFromLastSample++;
 				if(measurementsFromLastSample % store_every_sample == 0) {
-					markovChain.measure(simulation.meas(), store_every_sample);
+					markovChain.store(simulation.meas(), store_every_sample);
 					if(timer.end()) break;					
 				}
 			}
