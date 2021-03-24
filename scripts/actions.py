@@ -156,19 +156,23 @@ def prepare_copy(folder_name):
 def get_component(component,json_object):
     return np.array(json_object[component]["real"]) + 1j*np.array(json_object[component]["imag"])
 
-def compute_order_parameter(folder_name):
+#Compute the superconducting and the antiferromagnetic (optional) order parameters
+def compute_order_parameter(folder_name): 
     filename = "green"
     save_filename = folder_name + "/order_graph"
-    Composante = 3
-    graph = np.zeros(0) 
-    graph = np.zeros((0,2)) #Comment if you want to only save the SC order parameter. Don't forget then to remove the AF-order-parameter part below
     G = []
     offset = 1
+    save_AFM_order_parameter = False; #Change this to True in order to also monitor the AFM order parameter
+    graph = np.zeros(0) 
+    if save_AFM_order_parameter:
+        graph = np.zeros((0,2))
+
     #If there is one, load the existing order_parameter file
     try:
         graph = np.load(save_filename + ".npy")
         offset+=len(graph)
     except:
+        graph = []
         pass
     #Now we compute the order parameter for the iterations in which it has not been done yet
     i=offset
@@ -192,11 +196,12 @@ def compute_order_parameter(folder_name):
             beta = json.load(f)["beta"]
         #We sum over the Matsubara frequencies (factor 2 because we only have the positive frequencies here)
         G = np.sum(G,axis=1)*2/beta
-        #We add the antiferromagnetic order-parameter to the saved data
-        Sz = np.loadtxt(os.path.join(folder_name,"DATA/SzSites.dat"))[-G.shape[0]:]
-        Sz = Sz[:,1] - Sz[:,2] + Sz[:,3] - Sz[:,4]
-        G = np.stack((G,Sz),axis=1)
-        #End adding the AF order-parameter
+        #Optionaly adds the AFM order parameter 
+        if save_AFM_order_parameter :
+            Sz = np.loadtxt(os.path.join(folder_name,"DATA/SzSites.dat"))[-G.shape[0]:]
+            Sz = Sz[:,1] - Sz[:,2] + Sz[:,3] - Sz[:,4]
+            G = np.stack((G,Sz),axis=1)
+
         graph = np.concatenate((graph,G))
         np.save(save_filename,graph)
 #END

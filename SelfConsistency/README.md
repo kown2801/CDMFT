@@ -84,3 +84,60 @@ On this line the terms are in order :
 Here I provide a minimal working example with : 
 
 	./STIFFNESS IN/ OUT/ DATA/ params 70
+
+# Inputs and outputs
+
+## Self-consistency (CDMFT)
+
+### If iteration!=0,
+
+#### Inputs
+
+`inputDirectory/{inputfilename}{iteration}.meas.json` is the main input file. 
+It should contain certain fields for this part of the program : 
+* Measurements
+	* GreenI\_*component* (for example GreenI\_00) : Imaginary part of component *component* of the cluster Green's function. 
+	* GreenR\_*component* (for example GreenR\_00) : Real part of component *component* of the cluster Green's function. 
+	* Sign (the program divides all measured observables by this value at the start of the program. See more details in `ImpuritySolver/README.md`
+	* All other observables that come out of the impuritysolver program. Those will be saved into dat files in order to have them already divided by the sign and access them easily.
+
+* Parameters
+	* Physical parameters
+		* ep
+		* mu
+		* tpd
+		* tppp (if not present, the program takes tppp=tpp)
+		* tpp (Usually taken equal to 1)
+		* beta
+		* EGreen : Energy cutoff for the Green's function, maximum energy we consider in the simulation)
+		* Optional parameters : S and n. When you define one you should define the other also. It is used to fix the occupation instead of the chemical potential mu. In order to fix n, the program changes mu by -S\\Delta n , \\Delta n being the difference between Measurements["N"] and n. Their use os however not recommended as convergence may be way slower.
+	* File parameters. Beware here that the `inputDirectory/` of the ImpuritySolver in the `ouputDirectory/` of this program: 
+		* HYB : name of the Hyb file in `outputDirectory/`
+		* (LINKN and LINKA) or LINK : name of the Link files in `outputDirectory/`. If LINK is defined, it will use the file indicated to build the link matrix (correspondance between the cluster and the components defined in HYB). Else it will build the link matrix from the LINKN and LINKA files. See README.md in `ImpuritySolver/` for more info on this.
+
+
+#### Outputs
+* Files for the next iteration : 
+	* `outputDirectory/{inputfilename}{iteration+1}.json`
+	* `outputDirectory/Hyb{iteration+1}.json`
+* Data files. Those files are : 
+	* `dataDirectory/self{iteration}.json` Computed in `CDMFT`
+	* `dataDirectory/green{iteration}.json` Computed in `CDMFT`
+* Measurement files : 
+	* `dataDirectory/ChiFull{iteration}.dat` result from the input file (Chi), divided by the sign and copied here
+	* `dataDirectory/ChiFullSites{iteration}.dat` result from the input file (Chi_j), divided by the sign and copied here
+	* `dataDirectory/pK{iteration}.dat` result from the input file (pK), divided by the sign and copied here
+	* Chi0.dat Chi0Sites.dat D.dat DSites.dat k.dat kSites.dat N.dat NSites.dat sign.dat Sz.dat SzSites.dat. A line is added at the end of those files, all in `dataDirectory/` . This line has the structure : iteration_nb data1 data2 data3... This data is only the result taken from the input file, divided by the sign and copied here.
+
+
+### Else if iteration==0,
+
+#### Inputs
+
+In this case the input file is `inputDirectory/{inputfilename}0.json`
+The content of this file should be the same as the `Parameters` field in the case iteration!=0. There is then two possibilities : 
+ * if `dataDirectory/` contains a self0.json file, it will load it and create the hybridization function with it
+ * else it assumes the self-energy is zero for the normal part. For the anomalous part, it uses the `delta` parameter of the input file to initialize it to a non zero value (in order to allow superconductivity).
+Its outputs are the same as for the iteration!=0 case except for the measurement files (as there are no results yet).
+
+

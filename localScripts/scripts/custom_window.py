@@ -1,5 +1,6 @@
 import pandas
 import tkinter
+from tkinter import messagebox
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 # Implement the default Matplotlib key bindings.
@@ -13,7 +14,7 @@ from threading import Thread
 from scripts import distant_consts as CONSTS
 
 all_data_folder = CONSTS.distant_data_dir
-scripts_folder = CONSTS.distant_scripts_dir
+scripts_dir = CONSTS.distant_scripts_dir
 
 def print_and_mean(data,ax,mean_over):
     n = len(data)
@@ -34,7 +35,7 @@ class Process_window:
         self.connection = c
         self.not_all_occupation = False
         self.root = tkinter.Tk()
-        self.root.wm_title(folder["nom"])
+        self.root.wm_title(folder["name"])
         self.fig = Figure(figsize=(8, 9), dpi=100)
         self.ax1 = self.fig.add_subplot(311)
         self.ax2 = self.fig.add_subplot(312)
@@ -54,24 +55,39 @@ class Process_window:
         graph,sign_graph,N_graph,pn_graph = \
             self.folder["graph"],self.folder["sign_graph"],self.folder["N_graph"],self.folder["pn_graph"],
         try:
-            print_and_mean(graph,self.ax1,self.mean_over)
+            if len(graph.shape) > 1:
+                for i in range(graph.shape[1]):
+                    #We need to print multiple data to observe convergence
+                    if graph[0,i]!= 0 and graph[0,0]:
+                        #If the starting values are not 0, we can simply normalize
+                        print_and_mean(graph[:,i]/graph[0,i]*graph[0,0],self.ax1,self.mean_over)
+                        #Else we just want to print lines that coincide on the first point to have somewhat nice plots
+                    elif graph[0,i] != 0:
+                        print_and_mean(graph[:,i] - graph[0,i],self.ax1,self.mean_over)
+                    else:
+                        print_and_mean(graph[:,i] + graph[0,0],self.ax1,self.mean_over)
+            else:
+                print_and_mean(graph,self.ax1,self.mean_over)
         
             self.ax1.set_title("Data analysis")
             print_and_mean(sign_graph,self.ax2,self.mean_over)
             self.ax2.set_title("Sign")
             self.ax3.set_title("Total occupation")
-            try:
-                print_and_mean(2*N_graph + 4*pn_graph,self.ax3,self.mean_over)
-            except:
-                print_and_mean(2*N_graph[len(pn_graph)] + 4*pn_graph,self.ax3,self.mean_over)
-                if len(N_graph) != len(pn_graph):
+            if len(N_graph) != len(pn_graph):
+                if len(N_graph) > len(pn_graph):
                     print("L'occupation n'a pas été calculé en entier :", len(N_graph), len(pn_graph))
                     self.not_all_occupation = True
+                    N_graph = N_graph[:len(pn_graph)]
+                else:
+                    self.occs()
+                    messagebox.showwarning("Error in the Occupations", "For this simulation folder (" + self.folder["name"] + "), there was too much oxygen occupation data. The eronous data will be diplayed here for reference and a correction job has just been launched")
+                    pn_graph = pn_graph[:len(N_graph)]
+            print_and_mean(2*N_graph + 4*pn_graph,self.ax3,self.mean_over)
             self.ax1.legend()
             self.fig.subplots_adjust(top=0.95)
-        except:
-            print("Not enough data in " + self.folder["nom"] + " : " + str(len(N_graph)))
-            self.button_resume.configure(bg="orange")
+        except Exception as e:
+            print("Not enough data in " + self.folder["name"] + " : " + str(len(N_graph)))
+            print("Error message : " + str(e))
             return
     
     
@@ -97,10 +113,13 @@ class Process_window:
         self.resumeframe = tkinter.Frame(self.root)
         self.iterations_input = tkinter.Entry(master=self.resumeframe)
         self.iterations_input.pack(side=tkinter.LEFT)
+        self.iterations_input.insert(tkinter.END, str(len(self.folder["graph"]) + 35))
         self.time_input = tkinter.Entry(master=self.resumeframe)
         self.time_input.pack(side=tkinter.LEFT)
-        self.button_resume = self.create_one_button("Resume Simulation",self.resume,self.resumeframe)
-        
+        self.time_input.insert(tkinter.END,"1")
+        self.button_resume = self.create_one_button("Resume Simulation",self.resume_according_inputs,self.resumeframe)
+        self.create_one_button("+1 day",self.resume_one_day,self.resumeframe)
+        self.create_one_button("+2 days",self.resume_two_days,self.resumeframe)
         
         self.resumeframe.pack(side=tkinter.BOTTOM)
         self.buttonframe.pack(side=tkinter.BOTTOM)
@@ -125,7 +144,7 @@ class Process_window:
     
     def cancel(self):
         #Stopping the job for the folder
-        all_files = self.connection.run("cd " + os.path.join(all_data_folder,self.folder["nom"]) + ";ls",hide=True).stdout.split()
+        all_files = self.connection.run("cd " + os.path.join(all_data_folder,self.folder["name"]) + ";ls",hide=True).stdout.split()
         all_job_numbers = []
         for file in all_files:
             number = re.findall("slurm\-([0-9]*)\.out", file, flags=0)
@@ -145,39 +164,53 @@ class Process_window:
             self.cancel()
         except:
             pass
-        self.connection.run(CONSTS.launch_numpy_actions + " -a prepare_copy -f" + self.folder["nom"],hide=True)
-        if self.folder["graph"].shape != self.folder["sign_graph"].shape or self.folder["N_graph"].shape != self.folder["pn_graph"].shape:
+        self.connection.run(CONSTS.launch_numpy_actions + " -a prepare_copy -f" + self.folder["name"],hide=True)
+        if self.folder["N_graph"].shape != self.folder["pn_graph"].shape:
             raise Exception("N and pn graphs should have the same shape when copying. Either run all occupations or check the simulation folder to correct this problem")
         def go_host_key():
-            self.folder["nom"]
-            call(["scp","-rC",CONSTS.ssh_address + ":" + os.path.join(all_data_folder,self.folder["nom"]) ,os.path.join(os.getcwd(),"AllData/transfered")])
+            self.folder["name"]
+            call(["scp","-rC",CONSTS.ssh_address + ":" + os.path.join(all_data_folder,self.folder["name"]) ,os.path.join(os.getcwd(),"AllData/transfered")])
             f = open("AllData/transfer.done","a")
-            f.write(self.folder["nom"] + "\n")
+            f.write(self.folder["name"] + "\n")
             f.close()
-            local_transfered_dir = os.path.join("AllData/transfered/",self.folder["nom"])
+            local_transfered_dir = os.path.join("AllData/transfered/",self.folder["name"])
             if os.path.isdir(local_transfered_dir) and\
             os.path.isdir(os.path.join(local_transfered_dir,"DATA")) and\
             os.path.isdir(os.path.join(local_transfered_dir,"OUT")) and\
             os.path.isdir(os.path.join(local_transfered_dir,"IN")):
-                self.connection.run("rm -r " + os.path.join(all_data_folder,self.folder["nom"]))
+                self.connection.run("rm -r " + os.path.join(all_data_folder,self.folder["name"]))
         Thread(target=go_host_key).start()
         
     def occs(self):
         #Sends the signal to compute all occupations for the current folder
-        self.connection.run(CONSTS.launch_sbatch_actions + " -a occupations -f " + self.folder["nom"],hide=True)
+        self.connection.run(CONSTS.launch_sbatch_actions + " -a occupations -f " + self.folder["name"],hide=True)
     def delete(self):
         #Sends the signal to delete the last iteration
-        self.connection.run(CONSTS.launch_numpy_actions + " -a delete_last -f " + self.folder["nom"],hide=False)
+        self.connection.run(CONSTS.launch_numpy_actions + " -a delete_last -f " + self.folder["name"],hide=False)
         
-    def resume(self):
-        #Sends the signal to resume the simulation
+        
+    def resume_custom(self):#Sends the signal to resume the simulation
         try:
             self.cancel()
         except:
             pass
-        iterations = int(self.iterations_input.get())
-        time = int(self.time_input.get())
-        result = self.connection.run(os.path.join(scripts_folder,"resume_simulation.py") + " "\
-                       + self.folder["nom"] + " -1 " + str(iterations) + " " + str(time),hide=True)
+        result = self.connection.run("cd " + scripts_dir + ";./resume_simulation.sh "+ \
+                       self.folder["name"] + " -1 " + str(self.more_iterations) + " " + str(self.more_time),hide=True)
         print(result.stdout)
+    
+    def resume_according_inputs(self):
+        self.more_iterations = self.iterations_input.get()
+        self.more_time = self.time_input.get()
+        self.resume_custom()    
+        
+    def resume_one_day(self):
+        self.more_iterations = -1
+        self.more_time = 1
+        self.resume_custom()
+        
+    def resume_two_days(self):
+        self.more_iterations = -1
+        self.more_time = 2
+        self.resume_custom()
+        
         

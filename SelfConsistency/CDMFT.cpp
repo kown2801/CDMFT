@@ -262,7 +262,7 @@ int main(int argc, char** argv)
             /* We read the observables into files */
 
             if(exists(jParams,"n")){
-                double const S = jMeas["S"][0];
+                double const S = jParams["S"];
                 double const current_N = jMeas["N"][0];
                 double const target_N = jParams["n"];
                 jParams["mu"] = mu - S*(current_N - target_N);

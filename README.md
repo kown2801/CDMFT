@@ -61,9 +61,11 @@ This is the minimal structure of the ${HOME}/local folder you need.
 
 ## Usage
 
+CMDFT consists in iterating an system of equations. Here, you use `ImpuritySolver/IS` and `SelfConsistency/CDMFT` alternatively until convergence is achieved. The script in `scripts/launch.py` can be used to do the cycle automatically. The other files in the `scripts/` directory can be used to launch a new simulation or execute different actions on simulations. 
+
 You can either use the programs using what is written in the [SelfConsistency/README.md](SelfConsistency/README.md) and [ImpuritySolver/README.md](ImpuritySolver/README.md) files or use the python library that I wrote in order to launch simulations. 
-I describe here how to setup the python scripts on your local computer to sart using the code now.
-All the scripts I write about here are located in the 'localScripts/' folder at the root of the repository. In order to use those, copy the content of this directory on your personal - or work - computer. Please make sure to copy all the content of the directory because the structure of the code is important for it to work.
+I describe here how to setup the python scripts on your local computer to start using the code now.
+All the scripts I write about here are located in the `localScripts/` folder at the root of the repository. In order to use those, copy the content of this directory on your personal - or work - computer. Please make sure to copy all the content of the directory because the structure of the code is important for it to work.
 
 ### Setting up your ssh keys
 
@@ -116,6 +118,10 @@ The final step is to copy the public key on the compute canada computer. To do s
 Then you need to copy the content of the 'id_rsa.pub' local file that you just created using the ssh-keygen command inside this 'authorized_keys' file (it is one line). You should be able to connect to your supercomputer space without a password now. If not so, please check https://docs.computecanada.ca/wiki/Using_SSH_keys_in_Linux for help. This step is mandatory in order to be able to connect from the jupyter notebooks.
 
 ### Setup before using the python library
+
+The `localScripts/` directory should be copied on your computer. It includes multiple jupyter notebook files that will help you launch simulations and get/analyse data at the end of simulations. Keep the `AllData/` and `transfered` directories as results of simulations will be downloaded into them.
+
+
 You have multiple files in order to do multiple things.
 Before doing anything, please read those lines and follows those simple steps
 
