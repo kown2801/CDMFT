@@ -437,7 +437,7 @@ namespace Tr {
 		*	Adds the site measurements to the measurements of the entire simulation
 		*	Resets the measurements for the next round of measurements
 		*/
-		void sotre(Ut::Measurements& measurements, int site, Meas& meas, int NMeas) {
+		void store(Ut::Measurements& measurements, int site, Meas& meas, int NMeas) {
 			acc_.k /= NMeas; 
 			acc_.N /= NMeas; 
 			acc_.Sz /= NMeas; 
