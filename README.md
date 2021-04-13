@@ -20,7 +20,7 @@ OpenBlas, pthread, nlohmann/json, openmpi
 * Openblas is also accessible directly from ComputeCanada clusters but the version they have there doesn't seem to be able to compute the inverse of a matrix. Therefore, we need to recompile it by hand. I provide the instructions for installing OpenBlas
 * The nlomann/json library is already installed in the project. It is only a single `.hpp` file. this file is called `nlohmann_json.hpp` in both the `SelfConsistency/` and `ImpuritySolver/` directories. It is a copy of the file `single_include/nlohmann/json.hpp` from commit n°176d8e261 of https://github.com/nlohmann/json.git. I just changed the dump function for arrays in order to make them oneline. It makes the `.json` files more readable.
 
-You need to install one library. If you are lazy you can just execute the ./install-libraries.sh script to install it. This will execute all command lines indicated here until `cp libopenblas.a ~/local/lib` included. It may take a while (installing openblas is a bit long).
+You need to install one library. If you are lazy you can just execute the `./install-libraries.sh` script to install it. This will execute all command lines indicated here until `cp libopenblas.a ~/local/lib` included. It may take a while (installing openblas is a bit long).
 
 Let's go.
 First you need to create a "local" folder in your home directory. Then inside of this folder, create a `lib/` directory.
@@ -47,7 +47,7 @@ and make the program
 	make -j4
 
 (The j options allows you to compile on multiple processors simultaneously, so that is goes faster)	
-This step may be a bit long, so go grab a cup of coffee or start instaling the json library
+This step may be a bit long, so go grab a cup of coffee.
 
 Then copy the freshly compiled library to your lib folder 
 
