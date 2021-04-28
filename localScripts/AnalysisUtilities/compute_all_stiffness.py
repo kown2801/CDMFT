@@ -4,8 +4,9 @@ import json
 import progressbar
 import glob
 import re
-from scripts import utils
-
+from AnalysisUtilities import utils
+from AnalysisUtilities import constructG as c
+from AnalysisUtilities import integrator
 
 
 def find_missing_stiffness(input_dir,data_dir,convergedFor):
@@ -47,10 +48,8 @@ def last_convergedFor_in_folder(files_dir,convergedFor):
             np.savetxt(stiffness_filename,stiffness_data,fmt='%i %f')
     return 0
 
-from scripts import constructG as c
-from scripts import integrator
 
-#Compute the stiffness for one self-energy file. This is done using the scripts/integrator.py file that is directly taken from Patrick Sémon's C++ integration code (EulerMaclaurin2D integration) and the script/constructG.py file that computes the terms of the integral in a parallel np.array fashion
+#Compute the stiffness for one self-energy file. This is done using the AnalysisUtilities/integrator.py file that is directly taken from Patrick Sémon's C++ integration code (EulerMaclaurin2D integration) and the AnalysisUtilities/constructG.py file that computes the terms of the integral in a parallel np.array fashion
 def compute_stiffness(params,input_dir,file):
     if "tppp" not in params:
         params["tppp"] = 1

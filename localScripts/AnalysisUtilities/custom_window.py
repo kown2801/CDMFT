@@ -11,7 +11,7 @@ import os
 import re
 from subprocess import call
 from threading import Thread
-from scripts import distant_consts as CONSTS
+from AnalysisUtilities import distant_consts as CONSTS
 
 all_data_folder = CONSTS.distant_data_dir
 scripts_dir = CONSTS.distant_scripts_dir

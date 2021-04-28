@@ -1,5 +1,5 @@
 import collections
-from scripts import utils 
+from AnalysisUtilities import utils 
 import sys
 import numpy as np
 import os
@@ -120,7 +120,7 @@ class Measurements_Dico:
         elif self.is_computed_function(function):#The function asked for is a measurement
             return np.array(self.dict[function])[good_indices]
         else: #The function asked for is a non_computed quantity
-            raise Exception(str(function) + " is not computed yet. Please include it in the measurements variable when loading the dictionary. If you want to implement something that does not already exist, please see in scripts/measurements_dico.py.")
+            raise Exception(str(function) + " is not computed yet. Please include it in the measurements variable when loading the dictionary. If you want to implement something that does not already exist, please see in AnalysisUtilities/measurements_dico.py.")
 
 #This function retrieves the data and puts it in the right form for it to be plotted in 2D or 3D with or without errors
 #Ordering the points by the axeX or by another quantity using orderBy

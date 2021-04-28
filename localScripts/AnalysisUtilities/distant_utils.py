@@ -1,7 +1,7 @@
 import select
 import os
 import numpy as np
-from scripts import distant_consts as CONSTS
+from AnalysisUtilities import distant_consts as CONSTS
 
 from io import BytesIO
 
