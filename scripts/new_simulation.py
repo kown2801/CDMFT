@@ -1,4 +1,3 @@
-#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python/3.8.0/bin/python3.8
 import os
 import json
 import shutil
@@ -81,7 +80,7 @@ def generate_simulation(all_args):
 	else:
 		shutil.copy(os.path.join(backup_path,"LinkA.json"),os.path.join(files_path,"IN/LinkA.json"))
 		shutil.copy(os.path.join(backup_path,"LinkN.json"),os.path.join(files_path,"IN/LinkN.json"))
-	f.write(json.dumps(params_json, indent=4,sort_keys=True))
+	f.write(json.dumps(params_json, indent='\t',sort_keys=True))
 	f.close()
 	#End creation param1.json
 

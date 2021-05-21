@@ -37,7 +37,7 @@ void initial_Hyb_moments(json& jHyb,json& jParams){
 /****************************************************/
 /* Post processing of the simple double observables */
 void readScalSites(std::string obs, json& jMeas, int iteration,std::string outputFolder) {
-    std::ofstream file((outputFolder + obs + "Sites.dat").c_str(), std::ios_base::out | std::ios_base::app);                
+    std::ofstream file(outputFolder + obs + "Sites.dat", std::ios_base::out | std::ios_base::app);                
     file << iteration; 
     
     for(int i = 0; i < 4; ++i) {
@@ -48,7 +48,7 @@ void readScalSites(std::string obs, json& jMeas, int iteration,std::string outpu
     file << std::endl;
     file.close();
     
-    file.open((outputFolder + obs + ".dat").c_str(), std::ios_base::out | std::ios_base::app);
+    file.open(outputFolder + obs + ".dat", std::ios_base::out | std::ios_base::app);
     file << iteration << " " << jMeas[obs][0] << std::endl; 
     file.close();
 }
@@ -280,47 +280,31 @@ int main(int argc, char** argv)
             readScalSites("Sz", jMeas, iteration,dataFolder);
             readScalSites("D", jMeas, iteration,dataFolder);
             readScalSites("Chi0", jMeas, iteration,dataFolder);
-                        
-            {
-                
-                std::stringstream name; name << dataFolder << "pK" << iteration << ".dat";
-                std::ofstream file(name.str().c_str(), std::ios_base::out);
-                
-    
-
-                for(unsigned int k = 0; k < jMeas["pK"].size(); ++k) 
-                    file << k << " " << jMeas["pK"][k] << std::endl;
-                
-                file.close();
-            }
+                    
+			/* pK is the probability of having k pairs (k varying from 0 to a large number) */
+			/*	of operators on the total segment picture */
+			IO::writeInJsonDataFile(dataFolder + "pK.json",iteration,jMeas["pK"]);
+            
             
             if(jParams["EObs"] > .0) {
-                
                 {
-                    std::stringstream name; name << dataFolder << "ChiFullSites" << iteration << ".dat";
-                    std::ofstream file(name.str().c_str());
-                    
-                    for(unsigned int n = 0; n < jMeas["Chi"].size(); ++n) {
-                        file << 2*n*M_PI/beta;
-                        for(int i = 0; i < 4; ++i) {
-                            std::string s = std::to_string(i);
-                            file << " " << jMeas["Chi_" + s][n];
-                        }
-                        file << std::endl;
-                    }
-                    
-                    file.close();
+					json jChiObject;
+					jChiObject["beta"] = beta;
+					for(std::size_t i = 0; i < nSite_; ++i) {
+						std::string siteString = std::to_string(i);
+						jChiObject[siteString] = jMeas["Chi_" + siteString];
+					}
+					jChiObject["dataType"] = "BosonicMatsubaraFrequencies";
+					IO::writeInJsonDataFile(dataFolder + "ChiFullSites.json",iteration,jChiObject);
                 }
                 
                 {
-                    std::stringstream name; name << dataFolder << "ChiFull" << iteration << ".dat";
-                    std::ofstream file(name.str().c_str());
-                
-                    for(unsigned int n = 0; n < jMeas["Chi"].size(); ++n){
-                            file << 2*n*M_PI/beta << " " << jMeas["Chi"][n] << std::endl;
-                    }
-                    file.close();
-                }               
+					json jChiObject;
+					jChiObject["beta"] = beta;
+					jChiObject["data"] = jMeas["Chi"];
+					jChiObject["dataType"] = "BosonicMatsubaraFrequencies";
+					IO::writeInJsonDataFile(dataFolder + "ChiFull.json",iteration,jChiObject);
+				}               
             };
             /* End Reading observables */
             /***************************/
@@ -344,18 +328,18 @@ int main(int argc, char** argv)
             unsigned int const NSelf = beta*EGreen/(2*M_PI) + 1;
             
             json jSelf;
-            std::ifstream selfFile(dataFolder + "self0.json"); 
-            if(selfFile.good()) {
-                selfFile >> jSelf;
-                Hyb::accountForDifferentBeta(jSelf,beta);
-            }
-
+			try{
+				IO::readJsonFile(dataFolder + "self0.json", jSelf);
+			}catch(std::runtime_error&){
+				std::cout << "No self-Energy seed found" << std::endl;
+			}	
+			
             std::string dummy;
             selfEnergy.resize(NSelf);
             for(std::size_t n = 0; n < NSelf; ++n) {
                 /*******************************************/
                 /* We try loading the selfEnergy file */
-                if(selfFile.good())  
+                if(!jSelf.is_null())  
                 {
                     for (auto &p : component_map)
                     {
@@ -420,8 +404,11 @@ int main(int argc, char** argv)
         /************************************************************************/
         /**************************************/
         /* We save the self and green objects */
-        IO::writeMatsubaraToJsonFile(dataFolder + "self" + std::to_string(iteration) + ".json",jSelf,beta);
-        IO::writeMatsubaraToJsonFile(dataFolder + "green" + std::to_string(iteration) + ".json",jGreen,beta);
+		
+        IO::formatMatsubaraData(jSelf,beta);
+        IO::formatMatsubaraData(jGreen,beta);
+		IO::writeInJsonDataFile(dataFolder + "self.json",iteration,jSelf);
+		IO::writeInJsonDataFile(dataFolder + "green.json",iteration,jGreen);
         /**************************************/
 
                 
@@ -430,7 +417,8 @@ int main(int argc, char** argv)
         std::string const nextHybFileName = "Hyb" + std::to_string(iteration + 1) + ".json";
         jParams["HYB"] = nextHybFileName;
         
-        IO::writeMatsubaraToJsonFile(outputFolder + nextHybFileName,jNextHyb,beta);
+        IO::formatMatsubaraData(jNextHyb,beta);
+		IO::writeJsonToFile(outputFolder + nextHybFileName, jNextHyb);
         
 		IO::writeJsonToFile(outputFolder + "params" +  std::to_string(iteration + 1) + ".json",jParams);
         /*******************************************************/

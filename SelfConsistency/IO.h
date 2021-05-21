@@ -7,9 +7,7 @@
 #include "Patrick/Plaquette/Plaquette.h"
 using json=nlohmann::json;
 
-
-bool exists(const json& j, const std::string& key)
-{
+bool exists(const json& j, const std::string& key){
     return j.find(key) != j.end();
 }
 /********/
@@ -47,6 +45,35 @@ namespace IO{
 	    }
 	}
 	/*********************/
+	/*********************/
+	/* Loads a json file at a specific iteration*/
+	/*********************/
+	/* From a Bundle file*/
+	void readJsonFileInBundle(const std::string fileName, const int iteration, json & jObject){
+		std::cout << "Reading in " << fileName << std::endl;
+	    std::ifstream file(fileName); 
+	    if(file) {
+			std::string iterationString = std::to_string(iteration);
+	        file >> jObject;
+			jObject = jObject[iterationString];
+			if(jObject.is_null()){
+				throw std::runtime_error("Iteration " + std::to_string(iteration) + " not found in " + fileName);
+			}
+	    }else{
+	        throw std::runtime_error(fileName + " not found.");
+	    }
+	}
+	/* First from a plain file and then from a Bundle file*/
+	void readJsonFileAtIteration(const std::string filename_start, const std::string filename_end, const int iteration, json & jObject){
+		try{// We first check if the file exists on its own
+			readJsonFile(filename_start + std::to_string(iteration) + filename_end,jObject);
+		}catch( const std::runtime_error & e ){//Else we fetch it from a big `observableName` file
+			std::cout << filename_start + std::to_string(iteration) + filename_end << " not found. Trying the bundle file." << std::endl;
+			readJsonFileInBundle(filename_start + filename_end,iteration,jObject);
+		}
+	}
+	/*********************/
+
 	/*******************************/
 	/* Write a json Object to file */
 	/*******************************/
@@ -60,12 +87,32 @@ namespace IO{
 	    }
 	}
 	/******************************/
-
-	/***************************************/
+	
+	/***************************************************************************/
+	/* Saves the data in a big file (used to reduce the total number of files) */
+	void writeInJsonDataFile(const std::string fileName, const int iteration, json const& jObject){
+		//First we load the json file containing the already computed observableName from previous iterations (if there is any)
+		json jExistingData;
+		try{
+			readJsonFile(fileName, jExistingData);
+		}catch( const std::runtime_error & e ) {
+                std::cout << fileName << " doesn't exist yet. We create it." << std::endl;
+        }
+		//Then we add the data from this iteration 
+		std::string	iterationJsonIndex = std::to_string(iteration);
+		jExistingData[iterationJsonIndex] = jObject;
+		//And we save the whole object again in the file
+		writeJsonToFile(fileName,jExistingData);
+	}
+	void writeInJsonDataFile(const std::string filename_start, const std::string filename_end, const int iteration, json const& jObject){
+		writeInJsonDataFile(filename_start + filename_end,iteration,jObject);
+	}
+	/***************************************************************************/
+	
 	/****************************************/
 	/* Write a Matsubara Observable to file */
 	/****************************************/
-	void writeMatsubaraToJsonFile(std::string const fileName, json& jObject,double const beta){
+	void formatMatsubaraData(json& jObject,double const beta){
 		for (auto& el : jObject.items()){
 			el.value()["beta"] = beta;
 			if(!exists(el.value(),"First Moment")){
@@ -74,8 +121,8 @@ namespace IO{
 			if(!exists(el.value(),"Second Moment")){
 				el.value()["Second Moment"] = 0;
 			}
+			el.value()["dataType"] = "FermionicMatsubaraFrequencies";
 		}
-	    writeJsonToFile(fileName,jObject);
 	}
 	/******************************/
 	/*************************************************************************************************************************/
@@ -125,5 +172,9 @@ namespace IO{
 	    }
 	}
 	/****************************************************************************************/
+	
+	
+	
+	
 }
 #endif

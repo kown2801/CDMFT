@@ -1,4 +1,3 @@
-#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python/3.8.0/bin/python3.8
 import os
 import json
 import shutil
@@ -22,7 +21,7 @@ def resume_simulation(data_dir_name,iteration_min,iteration_max,Computing_days):
 	if iteration_min == "-1":
 		all_iterations = []
 		for file in glob.glob(os.path.join(files_path,"IN/params") + "*"):
-			number = re.findall("params([0-9]*)\.json", file, flags=0)
+			number = re.findall("params([0-9]+)\.json", file, flags=0)
 			if number:
 				all_iterations.append(int(number[0]))
 		iteration_min = max(all_iterations)
@@ -43,7 +42,7 @@ def resume_simulation(data_dir_name,iteration_min,iteration_max,Computing_days):
 		sh_destination.write('#SBATCH --job-name=""' + data_dir_name + '""\n')
 	for l in lines:
 		sh_destination.write(l)
-	sh_destination.write(os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(iteration_max) + " " + str(iteration_min))
+	sh_destination.write("python " + os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(iteration_max) + " " + str(iteration_min))
 	sh_destination.close()
 	#End ceration run.sh
 

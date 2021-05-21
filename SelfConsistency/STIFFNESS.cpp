@@ -23,7 +23,7 @@ int main(int argc, char** argv)
         /*   Reading the parameters   */
         /******************************/
         json jParams;
-		IO::readJsonFile(inputFolder + name + std::to_string(iteration) + ".meas.json",jParams);
+		IO::readJsonFileAtIteration(inputFolder + name,".meas.json",iteration,jParams);
 		jParams = jParams["Parameters"];
 
 		double const mu = jParams["mu"];
@@ -60,11 +60,9 @@ int main(int argc, char** argv)
         /*****************************************************************/
 
         json jSelf;
-        IO::readJsonFile(dataFolder + "self" + std::to_string(iteration) + ".json",jSelf);
+        IO::readJsonFileAtIteration(dataFolder + "self",".json",iteration,jSelf);
         Hyb::accountForDifferentBeta(jSelf,beta);
 
-		std::ofstream stiff(dataFolder + "stiffness.dat", std::ios::out | std::ios::app);
-		//
 		std::complex<double> stiffness = 0;
 		std::complex<double> last_stiffness = 0;
 		double error = 1e-2;
@@ -104,8 +102,9 @@ int main(int argc, char** argv)
 	//Because we sumed on the Matsubara Frequencies, we must normalize by a $\beta$ factor (this is in the formula of course)
 	stiffness/=beta;
 	std::cout << "This operation went to the " << n_max << "th Matsubara frequency" << std::endl;
-    	stiff << iteration << " " << stiffness.real() << " " << stiffness.imag() << std::endl;
-    	stiff.close();
+		std::ofstream stiffness_file(dataFolder + "stiffness.dat", std::ios::out | std::ios::app);
+    	stiffness_file << iteration << " " << stiffness.real() << " " << stiffness.imag() << std::endl;
+    	stiffness_file.close();
     }
 	catch(std::exception& exc) {
 		std::cerr << exc.what() << "\n";

@@ -6,6 +6,17 @@
 double fermi(double arg) {
 	return arg > .0 ? std::exp(-arg)/(1. + std::exp(-arg)) : 1./(1. + std::exp(arg));
 };
+void addComponentToObject(const RCuOMatrix& matrix, const std::string left, const std::string right, json& jObject,double const beta){
+	std::string index = left + "," + right;
+	if(!jObject[index].count("real")){
+		jObject[index]["real"] = json::array();
+		jObject[index]["imag"] = json::array();
+		jObject[index]["dataType"] = "FermionicMatsubaraFrequencies";
+		jObject[index]["beta"] = beta;
+	}
+	jObject[index]["real"].push_back(matrix(left,right).real());
+	jObject[index]["imag"].push_back(matrix(left,right).imag());
+}
 int main(int argc, char** argv)
 {
 	try {
@@ -23,7 +34,7 @@ int main(int argc, char** argv)
         /*   Reading the parameters   */
         /******************************/
         json jParams;
-		IO::readJsonFile(inputFolder + name + std::to_string(iteration) + ".meas.json",jParams);
+		IO::readJsonFileAtIteration(inputFolder + name,".meas.json",iteration,jParams);
 		jParams = jParams["Parameters"];
 
 		double const mu = jParams["mu"];
@@ -78,16 +89,13 @@ int main(int argc, char** argv)
         /*****************************************************************/
 
         json jSelf;
-        IO::readJsonFile(dataFolder + "self" + std::to_string(iteration) + ".json",jSelf);
+        IO::readJsonFileAtIteration(dataFolder + "self",".json",iteration,jSelf);
         Hyb::accountForDifferentBeta(jSelf,beta);
 
-		std::ofstream pxgreenFile((dataFolder + "pxgreen" + std::to_string(iteration) + ".dat").c_str());
-		std::ofstream pygreenFile((dataFolder + "pygreen" + std::to_string(iteration) + ".dat").c_str());
-		std::ofstream pxygreenFile((dataFolder + "pxygreen" + std::to_string(iteration) + ".dat").c_str());
 		std::ofstream pfilling(dataFolder + "pn.dat", std::ios::out | std::ios::app);
 		std::ofstream ekinFile(dataFolder + "ekin.dat", std::ios::out | std::ios::app);	
-		std::ofstream greenFile((dataFolder + "dgreen" + std::to_string(iteration) + ".dat").c_str());
-		//
+		
+		json jPx,jPy,jPxy,jD;
 		
 		Int::EulerMaclaurin2D<RCuOMatrix> integrator(1.e-4, 4, 12);
 		
@@ -109,46 +117,44 @@ int main(int argc, char** argv)
 			
 			RCuOLatticeGreen latticeGreen(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			RCuOMatrix green = integrator(latticeGreen, M_PI/2., M_PI/2.);
+			/********************************************************************************/
+			/* We save some of the components of the Green's function to file for later use */
+			addComponentToObject(green,"px_0Up", "px_0Up",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_1Up",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_2Up",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_3Up",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_0Down",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_1Down",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_2Down",jPx,beta);
+			addComponentToObject(green,"px_0Up", "px_3Down",jPx,beta);
 			
-			pxgreenFile << iomega.imag() << " "  
-			            << green("px_0Up", "px_0Up").real() << " " << green("px_0Up", "px_0Up").imag() << " " 
-			            << green("px_0Up", "px_1Up").real() << " " << green("px_0Up", "px_1Up").imag() << " " 
-			            << green("px_0Up", "px_2Up").real() << " " << green("px_0Up", "px_2Up").imag() << " " 
-			            << green("px_0Up", "px_3Up").real() << " " << green("px_0Up", "px_3Up").imag() << " "
-			            << green("px_0Up", "px_0Down").real() << " " << green("px_0Up", "px_0Down").imag() << " " 
-			            << green("px_0Up", "px_1Down").real() << " " << green("px_0Up", "px_1Down").imag() << " "
-			            << green("px_0Up", "px_2Down").real() << " " << green("px_0Up", "px_2Down").imag() << " "
-			            << green("px_0Up", "px_3Down").real() << " " << green("px_0Up", "px_3Down").imag() << std::endl;
+			addComponentToObject(green,"py_0Up", "py_0Up",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_1Up",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_2Up",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_3Up",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_0Down",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_1Down",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_2Down",jPy,beta);
+			addComponentToObject(green,"py_0Up", "py_3Down",jPy,beta);
 			
-			pygreenFile << iomega.imag() << " "  
-						<< green("py_0Up", "py_0Up").real() << " " << green("py_0Up", "py_0Up").imag() << " " 
-			            << green("py_0Up", "py_1Up").real() << " " << green("py_0Up", "py_1Up").imag() << " " 
-			            << green("py_0Up", "py_2Up").real() << " " << green("py_0Up", "py_2Up").imag() << " " 
-						<< green("py_0Up", "py_3Up").real() << " " << green("py_0Up", "py_3Up").imag() << " "
-			            << green("py_0Up", "py_0Down").real() << " " << green("py_0Up", "py_0Down").imag() << " " 
-			            << green("py_0Up", "py_1Down").real() << " " << green("py_0Up", "py_1Down").imag() << " "
-						<< green("py_0Up", "py_2Down").real() << " " << green("py_0Up", "py_2Down").imag() << " "
-						<< green("py_0Up", "py_3Down").real() << " " << green("py_0Up", "py_3Down").imag() << std::endl;
+			addComponentToObject(green,"px_0Up", "py_0Up",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_1Up",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_2Up",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_3Up",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_0Down",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_1Down",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_2Down",jPxy,beta);
+			addComponentToObject(green,"px_0Up", "py_3Down",jPxy,beta);
 			
-			pxygreenFile << iomega.imag() << " "  
-			             << green("px_0Up", "py_0Up").real() << " " << green("px_0Up", "py_0Up").imag() << " " 
-			             << green("px_0Up", "py_1Up").real() << " " << green("px_0Up", "py_1Up").imag() << " " 
-			             << green("px_0Up", "py_2Up").real() << " " << green("px_0Up", "py_2Up").imag() << " " 
-			             << green("px_0Up", "py_3Up").real() << " " << green("px_0Up", "py_3Up").imag() << " " 
-			             << green("px_0Up", "py_0Down").real() << " " << green("px_0Up", "py_0Down").imag() << " " 
-						 << green("px_0Up", "py_1Down").real() << " " << green("px_0Up", "py_1Down").imag() << " "
-			             << green("px_0Up", "py_2Down").real() << " " << green("px_0Up", "py_2Down").imag() << " "
-			             << green("px_0Up", "py_3Down").real() << " " << green("px_0Up", "py_3Down").imag() << std::endl;
+			addComponentToObject(green,"d_0Up", "d_0Up",jD,beta);
+			addComponentToObject(green,"d_0Up", "d_1Up",jD,beta);
+			addComponentToObject(green,"d_0Up", "d_2Up",jD,beta);
+			addComponentToObject(green,"d_0Up", "d_1Down",jD,beta);
+			addComponentToObject(green,"d_1Up", "d_2Down",jD,beta);
+			/********************************************************************************/
 			
-			
-			greenFile << iomega.imag() << " "  
-			          << green("d_0Up", "d_0Up").real() << " " << green("d_0Up", "d_0Up").imag() << " " 
-			          << green("d_0Up", "d_1Up").real() << " " << green("d_0Up", "d_1Up").imag() << " " 
-			          << green("d_0Up", "d_2Up").real() << " " << green("d_0Up", "d_2Up").imag() << " " 
-			          << green("d_0Up", "d_1Down").real() << " " << green("d_0Up", "d_1Down").imag() << " "
-			          << green("d_1Up", "d_2Down").real() << " " << green("d_1Up", "d_2Down").imag() << std::endl;
-			
-			
+			/************************************/
+			/* We compute the oxygen occupation */
 			double temp = .0;
 			
 			temp += green("px_0Up", "px_0Up").real();
@@ -172,23 +178,27 @@ int main(int argc, char** argv)
 			//np is the number of electrons per site per spin
 
 			np += 2./beta*(temp/16 - (xp/(iomega - xp) - xm/(iomega - xm))/D).real();
+			/************************************/
 			
+			/*********************************/
+			/* We compute the kinetic energy */
 			RCuOLatticeKineticEnergy latticeKineticEnergyRCuO(iomega + mu, tpd, tpp, tppp, ep, selfEnergy);			
 			
 			ekin += 2./beta*(integrator(latticeKineticEnergyRCuO, M_PI/2., M_PI/2.).trace()/8. - EkinFM/iomega - EkinSM/(iomega*iomega)).real();		
+			/*********************************/
 		}
+		IO::writeInJsonDataFile(dataFolder + "pxgreen.json",iteration,jPx);
+		IO::writeInJsonDataFile(dataFolder + "pygreen.json",iteration,jPy);
+		IO::writeInJsonDataFile(dataFolder + "pxygreen.json",iteration,jPxy);
+		IO::writeInJsonDataFile(dataFolder + "dgreen.json",iteration,jD);
 		
 		
 		pfilling << iteration << " " << np << std::endl;
 		ekinFile << iteration << " " << ekin << std::endl;
 		
-		pxgreenFile.close();
-		pygreenFile.close();
-		pxygreenFile.close();
 		pfilling.close();
 		ekinFile.close();
 		
-		greenFile.close();
     }
 	catch(std::exception& exc) {
 		std::cerr << exc.what() << "\n";
