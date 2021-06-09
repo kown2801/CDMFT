@@ -1,9 +1,9 @@
 # CDMFT CT-QMC 3-band segment solver
 
 This solver is used to solve the three band Hubbard Model (or Emery model) in the CDMFT approximation with a Continuous Time Quantum Monte-Carlo impurity solver.
-This programm was written by Patrick Semon (patrick.semon@gmail.com as of June 2019).
+This programm was written by Patrick Semon (patrick.semon[at]gmail[dot]com as of June 2019).
 For license and use please ask him directly.
-If you have trouble installing or using the program, you can contact the author of this REAMDE.md (nicolas.kowalski.2016@polytechnique.org) 
+If you have trouble installing or using the program, you can contact the author of this REAMDE.md (nicolas.kowalski.2016[at]polytechnique[dot]org) 
 
 ## Installation
 
