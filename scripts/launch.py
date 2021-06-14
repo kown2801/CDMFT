@@ -26,8 +26,6 @@ def file_exists(filename_start,filename_end,iteration):
 		return Bu.debundle(filename_start,filename_end,iteration)
 
 def run(iterations_max,files_dir,iteration_start = 0):
-
-	
 	#files_dir is here the path of the folder to launch from the main dir (example ComputedData/ep9.0_beta60.0_mu12.41_U12.0_tpd1.4_tppp1.0)
 	path_to_main_dir = "../"
 	os.chdir(os.path.join(os.path.dirname(os.path.realpath(__file__)))) #The working directory is now the scripts directory
@@ -55,7 +53,7 @@ def run(iterations_max,files_dir,iteration_start = 0):
 			to_log("There was an error, an input parameters file was not produced ("+ input_dir + "params" + str(iteration_number) + ".json" + "), Retrying the iteration before. Try number " + str(number_of_tries))
 			return -1
 		to_log("Calling the Impurity Solver")
-		#call(["srun", os.path.join(solver_dir,"IS"),input_dir, output_dir,"params" + str(iterations)])
+		call(["srun", os.path.join(solver_dir,"IS"),input_dir, output_dir,"params" + str(iterations)])
 		#If the srun call failed, we should retry this iteration.
 		if not os.path.exists(os.path.join(output_dir,"params" + str(iterations) + ".meas.json")):
 			return 0

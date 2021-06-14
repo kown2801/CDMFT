@@ -62,7 +62,7 @@ namespace Hyb {
 	};
 	/* Constructs the Hybridization Function in the imaginary time space */
 	struct Function {
-	/** 
+		/** 
 		* 
 		* Function(std::string name, json const& jNumericalParams, json const& jEntry)
 		* 

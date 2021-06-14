@@ -35,7 +35,7 @@ void initial_Hyb_moments(json& jHyb,json& jParams){
 }
 /***************************************************************************/
 /****************************************************/
-/* Post processing of the simple double observables */
+/* Post processing of the simple observables */
 void readScalSites(std::string obs, json& jMeas, int iteration,std::string outputFolder) {
     std::ofstream file(outputFolder + obs + "Sites.dat", std::ios_base::out | std::ios_base::app);                
     file << iteration; 
@@ -61,7 +61,6 @@ void addMatsubaraDataToJson(json& jObject, std::map<std::string,std::vector<std:
     std::size_t nSite_ = matrix.size()/2;
     for (auto &p : inverse_component_map)
     {
-        
         std::complex<double> component_mean(0.,0.);
         std::size_t multiplicity = 0;
         if(p.first != "empty"){
@@ -151,7 +150,7 @@ int main(int argc, char** argv)
         }
         /*****************************************************************/
 
-        /* Objects used to save the Hybridation functions to file */
+        /* Object used to save the Hybridation functions to file */
         json jNextHyb;
 
         if(iteration) {
@@ -162,13 +161,15 @@ int main(int argc, char** argv)
             divideAllBy(jMeas,"Sign");
             /**********************************/
 
+            /*********************************/
+            /* We read the previous Hyb file */
             std::string hybFileName = jParams["HYB"];
             json jHyb;
             IO::readJsonFile(outputFolder + hybFileName,jHyb);
             Hyb::accountForDifferentBeta(jHyb,beta);
+            /*********************************/
 
-            //We have to read all the Hyb components into variables so take them from the jLink variable
-            
+            //We make sure all the data have the same size
             std::size_t NHyb = 0;
             std::size_t NGreen = 0;
             for (auto &p : component_map)
@@ -258,16 +259,18 @@ int main(int argc, char** argv)
             }
             /* End compute selfEnergy */
             /**************************/
-            /**************************************/
-            /* We read the observables into files */
+            /***********************************************************************/
+            /* We modify mu if the parameter "N_target" is fixed in the input file */ 
 
-            if(exists(jParams,"n")){
+            if(exists(jParams,"N_target")){
                 double const S = jParams["S"];
-                double const current_N = jMeas["N"][0];
-                double const target_N = jParams["n"];
+                double const current_N = jMeas["n"][0];
+                double const target_N = jParams["N_target"];
                 jParams["mu"] = mu - S*(current_N - target_N);
             }
-
+            /***********************************************************************/
+			/**************************************/
+            /* We read the observables into files */
             
             {
                 std::ofstream file(dataFolder + "sign.dat", std::ios_base::out | std::ios_base::app);
@@ -275,16 +278,15 @@ int main(int argc, char** argv)
                 file.close();
             }
             
-            readScalSites("N", jMeas, iteration,dataFolder);
+            readScalSites("n", jMeas, iteration,dataFolder);
             readScalSites("k", jMeas, iteration,dataFolder);
             readScalSites("Sz", jMeas, iteration,dataFolder);
-            readScalSites("D", jMeas, iteration,dataFolder);
+            readScalSites("docc", jMeas, iteration,dataFolder);
             readScalSites("Chi0", jMeas, iteration,dataFolder);
                     
 			/* pK is the probability of having k pairs (k varying from 0 to a large number) */
 			/*	of operators on the total segment picture */
 			IO::writeInJsonDataFile(dataFolder + "pK.json",iteration,jMeas["pK"]);
-            
             
             if(jParams["EObs"] > .0) {
                 {
@@ -318,11 +320,11 @@ int main(int argc, char** argv)
                 }
             }
             /************************************************/
-
+			w = std::complex<double>(jParams["weightR"],jParams["weightI"]);
 
         } else {
             /******************************************************************************************************/
-            /* Initialization of the self-energy using a self0.dat file or an the initialize_self_energy function */
+            /* Initialization of the self-energy using a self0.json file or using the initialize_self_energy function */
             /* We initialize the simulation using a self file or an empty self-energy */
             double const EGreen = jParams["EGreen"];
             unsigned int const NSelf = beta*EGreen/(2*M_PI) + 1;
@@ -364,7 +366,6 @@ int main(int argc, char** argv)
         /* Objects to save the self-energy and Green functions to file */
         json jSelf;
         json jGreen;
-        w = std::complex<double>(jParams["weightR"],jParams["weightI"]);
 
         /************************************************************************************************/
         /* Now we compute the next cluster Green's function and from that, the next hybridation function */

@@ -1,5 +1,5 @@
-#ifndef __NEWIO
-#define __NEWIO
+#ifndef __IO
+#define __IO
 
 #include "nlohmann_json.hpp"
 #include <fstream>
@@ -30,7 +30,7 @@ void divideAllBy(json& jObject, const std::string key){
 }
 namespace IO{
 	/*******************/
-	/* LINK FILE UTILS */
+	/* JSON FILE UTILS */
 	/*******************/
 	/*********************/
 	/* Loads a json file */

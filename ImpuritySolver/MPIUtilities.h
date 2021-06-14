@@ -67,6 +67,12 @@ namespace mpi {
 		jObject = json::parse(&buffer[0],&buffer[0] + size);
 	}	
 	
+	/* Reads  a json on all processors. Different file name should be used in order to avoid conflicts. */
+	/* This is perfect for the config files for example */
+	void read_json_all_processors(std::string name, json& jObject) {
+		IO::readJsonFile(name,jObject);
+	}	
+	
 	/* Write a json file. It waits for all processors to finish writing before continuing*/
 	void write_json(std::string name,json const& jObject) {
 		if(rank() == master) {
@@ -111,7 +117,7 @@ namespace mpi {
 #endif
 	}
 
-	/* For this one, insetad of summing, we take the maximum among the values. */
+	/* For this one, instead of summing, we take the maximum among the values. */
 	/* For this one, the result is available only all processors */
 	void getMax(uint64_t &toTransmit,uint64_t &toReceive){
 #ifdef HAVE_MPI
@@ -121,11 +127,7 @@ namespace mpi {
 #endif
 	}
 
-	/* Reads  a json on all processors. Different file name should be used in order to avoid conflicts. */
-	/* This is perfect for the config files for example */
-	void read_json_all_processors(std::string name, json& jObject) {
-		IO::readJsonFile(name,jObject);
-	}	
+	
 	
 // This is a temporary solution !!!!!!
 	struct ofstream : public std::ostringstream {

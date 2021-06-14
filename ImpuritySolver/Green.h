@@ -49,7 +49,7 @@ namespace Green {
 		};
 		/** 
 		* 
-		* void measure(Ut::Measurements& measurements, int measurementsFromLastStore)
+		* void store(Ut::Measurements& measurements, int measurementsFromLastStore)
 		* 
 		* Parameters :	measurements : variables used to store the measurements, used for output
 		*				measurementsFromLastStore : Number of measurements done since the last time we stored some measurements
@@ -63,7 +63,7 @@ namespace Green {
 		*	We then store this fourrier transform in the measurements variable
 		* 
 		*/
-		void measure(Ut::Measurements& measurements, int measurementsFromLastStore) {
+		void store(Ut::Measurements& measurements, int measurementsFromLastStore) {
 			std::valarray<double> greenReal(nMatG_);
 			std::valarray<double> greenImag(nMatG_);
 			double Dtau = beta_/static_cast<double>(nItG_);

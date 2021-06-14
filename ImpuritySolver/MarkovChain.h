@@ -221,14 +221,14 @@ namespace Ma {
 
 			for(int site = 0; site < nSite_; ++site) trace_[site]->store(measurements, site, acc_, measurementsFromLastStore);
 			
-			acc_.N /= nSite_;
+			acc_.n /= nSite_;
 			acc_.Sz /= nSite_;
-			acc_.D /= nSite_;
+			acc_.docc /= nSite_;
 			acc_.Chi /= nSite_;
 			
 			measurements["k"] << acc_.k;
-			measurements["N"] << acc_.N;
-			measurements["D"] << acc_.D;
+			measurements["n"] << acc_.n;
+			measurements["docc"] << acc_.docc;
 			measurements["Sz"] << acc_.Sz;
 			measurements["Chi0"] << acc_.Chi[0];
 
@@ -236,9 +236,9 @@ namespace Ma {
 				measurements["Chi"] << acc_.Chi;
 			
 			acc_.k = .0;
-			acc_.N = .0;
+			acc_.n = .0;
 			acc_.Sz = .0;
-			acc_.D = .0;
+			acc_.docc = .0;
 			acc_.Chi = .0;
 
 			link_.store(measurements, measurementsFromLastStore);	

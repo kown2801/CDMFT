@@ -57,7 +57,7 @@ namespace Ut {
 		file.write(reinterpret_cast<char*>(&t), sizeof(T));
 	};
 
-struct Observable {
+	struct Observable {
 		Observable() : counter_(0) {};
 		/** 
 		* 

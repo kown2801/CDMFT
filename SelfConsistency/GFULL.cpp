@@ -91,9 +91,6 @@ int main(int argc, char** argv)
         json jSelf;
         IO::readJsonFileAtIteration(dataFolder + "self",".json",iteration,jSelf);
         Hyb::accountForDifferentBeta(jSelf,beta);
-
-		std::ofstream pfilling(dataFolder + "pn.dat", std::ios::out | std::ios::app);
-		std::ofstream ekinFile(dataFolder + "ekin.dat", std::ios::out | std::ios::app);	
 		
 		json jPx,jPy,jPxy,jD;
 		
@@ -175,9 +172,8 @@ int main(int argc, char** argv)
 			temp -= green("py_2Down", "py_2Down").real();
 			temp -= green("py_3Down", "py_3Down").real();
 			
-			//np is the number of electrons per site per spin
-
 			np += 2./beta*(temp/16 - (xp/(iomega - xp) - xm/(iomega - xm))/D).real();
+			//np is the number of electrons per site per spin
 			/************************************/
 			
 			/*********************************/
@@ -192,6 +188,8 @@ int main(int argc, char** argv)
 		IO::writeInJsonDataFile(dataFolder + "pxygreen.json",iteration,jPxy);
 		IO::writeInJsonDataFile(dataFolder + "dgreen.json",iteration,jD);
 		
+		std::ofstream pfilling(dataFolder + "np.dat", std::ios::out | std::ios::app);
+		std::ofstream ekinFile(dataFolder + "ekin.dat", std::ios::out | std::ios::app);	
 		
 		pfilling << iteration << " " << np << std::endl;
 		ekinFile << iteration << " " << ekin << std::endl;

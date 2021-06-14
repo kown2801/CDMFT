@@ -40,8 +40,6 @@ def find_missing_occupation(input_dir,data_dir):
 		if i not in lst:
 			return i
 	return None
-
-
 def all_occupations_in_folder(files_dir):
 	data_from_autocoherence = "../"
 	autocoherence_dir = "SelfConsistency/"
@@ -130,6 +128,7 @@ def delete_last(files_dir):
 	return 0
 #END
 
+#Beginning functions to prepare the folder for copy to the local computer
 def delete_useless(folder_name):
 	os.chdir(folder_name)
 	print(os.getcwd())

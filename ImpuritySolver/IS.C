@@ -36,8 +36,8 @@ int main(int argc, char** argv)
 
 		//Start the simulation 
 		MC::MonteCarlo(*markovChain, simulation);
-		
 		//End of simulation
+		
 		delete markovChain; markovChain = 0;
 		
 		mpi::cout = mpi::every;

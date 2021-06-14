@@ -74,15 +74,18 @@ def generate_simulation(all_args):
 			raise Exception(i + " can't be included in the params file if it is not declared in the one in scripts/BACKUP_START")
 		params_json[i] = type(params_json[i])(all_args[i])
 	params_json["HYB"] = "Hyb1.json"
+	
 	f = open(os.path.join(files_path,"IN/params1.json"),"w")
+	f.write(json.dumps(params_json, indent='\t',sort_keys=True))
+	f.close()
+	#End creation param1.json
+	
+	#We put the Link files in
 	if "LINK" in params_json:
 		shutil.copy(os.path.join(backup_path,"Link.json"),os.path.join(files_path,"IN/Link.json"))
 	else:
 		shutil.copy(os.path.join(backup_path,"LinkA.json"),os.path.join(files_path,"IN/LinkA.json"))
 		shutil.copy(os.path.join(backup_path,"LinkN.json"),os.path.join(files_path,"IN/LinkN.json"))
-	f.write(json.dumps(params_json, indent='\t',sort_keys=True))
-	f.close()
-	#End creation param1.json
 
 	#Begin start simulation
 	os.chdir(files_path)

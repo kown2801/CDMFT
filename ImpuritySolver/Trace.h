@@ -81,15 +81,15 @@ namespace Tr {
 	
 	struct Meas {
 		Meas(json const& jNumericalParams) : 
-		k(.0), N(.0), Sz(.0), D(.0), 
+		k(.0), n(.0), Sz(.0), docc(.0), 
 		Chi(.0,
-			jNumericalParams["EObs"].get<double>() > .0 ? jNumericalParams["EObs"].get<double>()*jNumericalParams["beta"].get<double>()/(2.*M_PI) + 2 : 1
+			jNumericalParams["EObs"].get<double>() > .0 ? jNumericalParams["EObs"].get<double>()*jNumericalParams["beta"]/(2.*M_PI) + 2 : 1
 			) {
 		};
 		double k;
-		double N;
+		double n;
 		double Sz;
-		double D;
+		double docc;
 		std::valarray<double> Chi;
 		double Chiij;
 	};
@@ -106,7 +106,7 @@ namespace Tr {
 		typedef std::set<Operator> Operators;
 		/** 
 		* 
-		* Trace(jso nconst& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig)
+		* Trace(json const& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig)
 		* 
 		* Parameters :	jNumericalParams : storage of all the numerical parameters of the simulation
 		*				site : number of the site this refers to
@@ -349,8 +349,8 @@ namespace Tr {
 			acc_.k += sign*((operators(0).size() + operators(1).size())/2.);
 			
 			if(operators(0).size() && operators(1).size()) {
-				acc_.N += sign*.5*(lenght_[0] + lenght_[1])/beta_;
-				acc_.D += sign*overlap_/beta_;
+				acc_.n += sign*.5*(lenght_[0] + lenght_[1])/beta_;
+				acc_.docc += sign*overlap_/beta_;
 				acc_.Sz += sign*.5*(lenght_[0] - lenght_[1])/beta_;
 				acc_.Chi[0] += sign*.25*(lenght_[0] - lenght_[1])*(lenght_[0] - lenght_[1])/beta_;
 
@@ -361,8 +361,8 @@ namespace Tr {
 				double exp = std::exp(-std::abs(arg));
 				double fact = (arg < .0 ? exp/(1. + exp) : 1./(1. + exp));
 				
-				acc_.N += sign*(beta_*fact + lenght_[0])/(2.*beta_);
-				acc_.D += sign*lenght_[0]*fact/beta_;
+				acc_.n += sign*(beta_*fact + lenght_[0])/(2.*beta_);
+				acc_.docc += sign*lenght_[0]*fact/beta_;
 				acc_.Sz += sign*(-beta_*fact + lenght_[0])/(2.*beta_);
 				acc_.Chi[0] += sign*.25*((beta_ - 2.*lenght_[0])*fact + lenght_[0]*lenght_[0]/beta_);
 				//this next expression is only good when for different sites. This is taken into account in the Markovchain file
@@ -372,15 +372,15 @@ namespace Tr {
 				double exp = std::exp(-std::abs(arg));
 				double fact = (arg < .0 ? exp/(1. + exp) : 1./(1. + exp));
 				
-				acc_.N += sign*(beta_*fact + lenght_[1])/(2.*beta_);
-				acc_.D += sign*lenght_[1]*fact/beta_;
+				acc_.n += sign*(beta_*fact + lenght_[1])/(2.*beta_);
+				acc_.docc += sign*lenght_[1]*fact/beta_;
 				acc_.Sz += sign*(beta_*fact - lenght_[1])/(2.*beta_);
 				acc_.Chi[0] += sign*.25*((beta_ - 2.*lenght_[1])*fact + lenght_[1]*lenght_[1]/beta_);
 				//This expression is only good when for different sites. This is taken into account in the Markovchain file
 				chiTemp_[0] =  .5*(beta_*fact - lenght_[1]);
 			} else {
-				acc_.N += sign*(Tr00_1_ + Tr00_2_)/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
-				acc_.D += sign*Tr00_2_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
+				acc_.n += sign*(Tr00_1_ + Tr00_2_)/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
+				acc_.docc += sign*Tr00_2_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
 				acc_.Sz += .0;//There was no + sign here, meaning we reset the spin to 0 when there is no operator ?
 				acc_.Chi[0] += sign*beta_/2.*Tr00_1_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
 				//This expression is only good when for different sites. This is taken into account in the Markovchain file
@@ -439,15 +439,15 @@ namespace Tr {
 		*/
 		void store(Ut::Measurements& measurements, int site, Meas& meas, int NMeas) {
 			acc_.k /= NMeas; 
-			acc_.N /= NMeas; 
+			acc_.n /= NMeas; 
 			acc_.Sz /= NMeas; 
-			acc_.D /= NMeas; 
+			acc_.docc /= NMeas; 
 			acc_.Chi /= NMeas;
 			
 			std::string s = std::to_string(site);
 			measurements["k_" + s] << acc_.k;
-			measurements["N_" + s] << acc_.N;
-			measurements["D_" + s] << acc_.D;
+			measurements["n_" + s] << acc_.n;
+			measurements["docc_" + s] << acc_.docc;
 			measurements["Sz_" + s] << acc_.Sz;
 			measurements["Chi0_" + s] << acc_.Chi[0];
 
@@ -459,9 +459,9 @@ namespace Tr {
 			}
 			
 			meas.k += acc_.k; acc_.k = .0;
-			meas.N += acc_.N; acc_.N = .0;
+			meas.n += acc_.n; acc_.n = .0;
 			meas.Sz += acc_.Sz; acc_.Sz = .0;
-			meas.D += acc_.D; acc_.D = .0;
+			meas.docc += acc_.docc; acc_.docc = .0;
 			meas.Chi += acc_.Chi; acc_.Chi = .0;
 		}
 		std::valarray<double>& getChi(){

@@ -14,7 +14,7 @@
 
 namespace Link {
 	struct Link {
-	/** 
+		/** 
 		* 
 		* Link(json const& jNumericalParams, json const& jHyb, json const& jLink, Ut::Measurements& measurements)
 		* 
@@ -154,7 +154,7 @@ namespace Link {
 		*/
 		void store(Ut::Measurements& measurements, int measurementsFromLastStore) {
 			for(unsigned int i = 0; i < multiplicity_.size(); ++i) 
-				green_[i].measure(measurements, multiplicity_[i]*measurementsFromLastStore);
+				green_[i].store(measurements, multiplicity_[i]*measurementsFromLastStore);
 		};
 		
 		~Link() { 
