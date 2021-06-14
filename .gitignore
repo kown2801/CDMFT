@@ -1,0 +1,6 @@
+SelfConsistency/CDMFT
+SelfConsistency/GFULL
+SelfConsistency/STIFFNESS
+ImpuritySolver/IS
+*__pycache__
+logfile

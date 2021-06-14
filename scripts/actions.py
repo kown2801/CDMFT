@@ -1,4 +1,3 @@
-#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python/3.5.4/bin/python3.5
 from subprocess import run
 import numpy as np
 import argparse
@@ -7,17 +6,18 @@ import os
 import glob
 import re
 import json
+import bundle_utils as Bu
 
 single_occupation_files = ["ekin.dat","pn.dat"]
 single_filenames = ["Chi0.dat","Chi0Sites.dat","D.dat","DSites.dat","ekin.dat","k.dat","kSites.dat","N.dat","NSites.dat","pn.dat","sign.dat","Sz.dat","SzSites.dat"]
-multiple_filenames = ["ChiFull","ChiFullSites","dgreen","green","hyb","pK","pxgreen","pxygreen","pygreen","self"]
+multiple_filenames = ["ChiFull","ChiFullSites","dgreen","hyb","pK","pxgreen","pxygreen","pygreen","green","self"]
 
 #Parser that prints the help on error
 class MyParser(argparse.ArgumentParser): 
-   def error(self, message):
-      sys.stderr.write('error: %s\n' % message)
-      self.print_help()
-      sys.exit(2)
+	def error(self, message):
+		sys.stderr.write('error: %s\n' % message)
+		self.print_help()
+		sys.exit(2)
 #END
 
 #Beginning function to handle uncomputed occupations
@@ -59,10 +59,10 @@ def all_occupations_in_folder(files_dir):
 			data = data[np.argsort(data[:,0])]
 			np.savetxt(os.path.join(data_dir,file),data,fmt='%i %f')
 			order_and_remove_occupation(files_dir)
-		#We need to sort everything to be sure it's ok
+			#We need to sort everything to be sure it's ok
 	return 0
 def order_and_remove_occupation(files_dir):
-	autocoherence_dir = "Autocoherence/"
+	autocoherence_dir = "SelfConsistency/"
 	solver_dir = "ImpuritySolver/"
 	input_dir = os.path.join(files_dir,"IN/")
 	output_dir = os.path.join(files_dir,"OUT/")
@@ -88,7 +88,8 @@ def handle_occupation(files_dir):
 def find_last_results(files_dir):
 	results_list = []
 	for f in glob.glob(os.path.join(files_dir,"OUT/params*.meas.json")):
-		results_list.append(int(re.search(r"params([0-9]+)\.meas\.json",f).group(1)))
+		if f != os.path.join(files_dir,"OUT/params.meas.json"):
+			results_list.append(int(re.search(r"params([0-9]+)\.meas\.json",f).group(1)))
 	try:
 		return(max(results_list))
 	except:
@@ -99,6 +100,7 @@ def delete_safely(file):
 		os.remove(file)
 	except Exception as e:
 		print("Erreur au fichier " + file)
+		
 def delete_last(files_dir):
 	iteration = find_last_results(files_dir)
 	data_dir = os.path.join(files_dir,"DATA/")
@@ -111,26 +113,22 @@ def delete_last(files_dir):
 				try:
 					np.savetxt(os.path.join(data_dir,file),data[:-1,:],fmt="%i %f")
 				except:
-						np.savetxt(os.path.join(data_dir,file),data[:-1,:],fmt="%i %f %f %f %f")
+					np.savetxt(os.path.join(data_dir,file),data[:-1,:],fmt="%i %f %f %f %f")
 			else:
 				print("Erreur au fichier " + file + " " + str(int(data[-1,0])) + " :  " + str(int(iteration)))
 		except Exception as e:
 			print("Erreur au fichier " + file)
+			
 	for file in multiple_filenames:
-		delete_safely(os.path.join(data_dir,file + str(iteration) + ".dat"))
-	delete_safely(os.path.join(input_dir,"Hyb" + str(int(iteration)+1) + ".json"))	
-	delete_safely(os.path.join(input_dir,"params" + str(int(iteration)+1) + ".json"))		
-	delete_safely(os.path.join(output_dir,"params" + str(iteration) + ".meas.json"))	
+		Bu.delete_in_bundle(os.path.join(data_dir,file),".json",iteration)
+	
+	Bu.delete_and_debundle(os.path.join(input_dir,"Hyb"),".json",iteration+1)
+	Bu.delete_and_debundle(os.path.join(input_dir,"params"),".json",iteration+1)
+	Bu.delete_and_debundle(os.path.join(output_dir,"params"),".meas.json",iteration)
 	return 0
 #END
 
 #Beginning functions to prepare the folder for copy to the local computer
-def delete_safely(file):
-    try:
-        os.remove(file)
-    except:
-        pass
-
 def delete_useless(folder_name):
     os.chdir(folder_name)
     print(os.getcwd())
@@ -148,45 +146,56 @@ def prepare_copy(folder_name):
 #END
 
 #Beginning functions to compute the order parameter for all iterations that were not already computed
-def compute_order_parameter(folder_name):
-    filename = "green"
-    save_filename = folder_name + "/order_graph"
-    Composante = 3
-    graph = np.zeros(0)
-    G = []
-    offset = 1
-    try:
-        graph = np.load(save_filename + ".npy")
-        offset+=len(graph)
-    except:
-        pass
-    i=offset
-    try:
-        while(True):
-            G.append([])
-            f=open(folder_name + "/DATA/" + filename + str(i) + ".dat", "r")
-            fl = f.readlines()
-            for num, line in enumerate(fl):
-                valueList = re.split(" |\n",line)[1:-1]
-                G[i-offset].append(valueList)
-            i+=1
-            f.close()
-    except FileNotFoundError as e:
-        print("Fin de la lecture des fichiers, le dernier était le numéro: " + str(i-1))
-        if i-1 == 0:
-            print(e)
-    except Exception as e:
-        print(str(e))
-    if len(G[0]) != 0:
-        G = np.array(G[:-1]).astype(float)
-        print(G.shape)
-        #Ici, G[it][iwn][site]
-        G = np.transpose(G,(1,2,0)) #Ici, G[iwn][site][it], mieux pour voir quelquechose
-        with open(folder_name + "/IN/params1.json") as f:
-            beta = json.load(f)["beta"]
-        G = np.sum(G,axis=0)*2/beta
-        graph = np.concatenate((graph,(G[2*(Composante+1)] - G[2*Composante])/2))
-        np.save(save_filename,graph)
+def get_component(component,json_object):
+	return np.array(json_object[component]["real"]) + 1j*np.array(json_object[component]["imag"])
+
+#Saves the first component of the Green's function in order to verify convergence
+def compute_order_parameter(folder_name): 
+	filename = "green"
+	save_filename = folder_name + "/order_graph"
+	G = []
+	offset = 1
+	save_AFM_order_parameter = False; #Change this to True in order to also monitor the AFM order parameter
+	graph = np.zeros(0) 
+	if save_AFM_order_parameter:
+		graph = np.zeros((0,2))
+
+	#If there is one, load the existing order_parameter file
+	try:
+		graph = np.load(save_filename + ".npy")
+		offset+=len(graph)
+	except:
+		graph = []
+		pass
+	#Now we compute the order parameter for the iterations in which it has not been done yet
+	i=offset
+	try:
+		while(True):
+			G_object = Bu.get_file_content(os.path.join(folder_name,"DATA/" + filename),".json",i)
+			data = get_component("00",G_object).imag
+			G.append(data)
+			i+=1
+
+	except Exception as e:
+		print("Fin de la lecture des fichiers, le dernier était le numéro: " + str(i-1))
+		if i-1 == 0:
+			print(e)
+	#If we loaded some Green's function components, we compute the order parameter and add it to the existing computations
+	if G:	  
+		#Here we have G = order_parameter[it][iwn]
+		#We load beta
+		params = Bu.get_file_content(folder_name + "/IN/params",".json",i-1)
+		beta = params["beta"]
+		#We take only the first Matsubara frequency
+		G = G[:,0]
+		#Optionaly adds the AFM order parameter 
+		if save_AFM_order_parameter :
+			Sz = np.loadtxt(os.path.join(folder_name,"DATA/SzSites.dat"))[-G.shape[0]:]
+			Sz = Sz[:,1] - Sz[:,2] + Sz[:,3] - Sz[:,4]
+			G = np.stack((G,Sz),axis=1)
+
+		graph = np.concatenate((graph,G))
+		np.save(save_filename,graph)
 #END
 
 

@@ -13,7 +13,6 @@
 #include <set>
 #include "Utilities.h"
 #include "MPIUtilities.h"
-#include <boost/lexical_cast.hpp>
 
 
 namespace Tr {
@@ -76,16 +75,16 @@ namespace Tr {
 	};
 	
 	struct Meas {
-		Meas(json_spirit::mObject const& jNumericalParams) : 
-		k(.0), N(.0), Sz(.0), D(.0), 
+		Meas(json const& jNumericalParams) : 
+		k(.0), n(.0), Sz(.0), docc(.0), 
 		Chi(.0,
-			jNumericalParams.at("EObs").get_real() > .0 ? jNumericalParams.at("EObs").get_real()*jNumericalParams.at("beta").get_real()/(2.*M_PI) + 2 : 1
+			jNumericalParams["EObs"].get<double>() > .0 ? jNumericalParams["EObs"].get<double>()*jNumericalParams["beta"]/(2.*M_PI) + 2 : 1
 			) {
 		};
 		double k;
-		double N;
+		double n;
 		double Sz;
-		double D;
+		double docc;
 		std::valarray<double> Chi;
 	};
 	/** 
@@ -100,7 +99,7 @@ namespace Tr {
 		typedef std::set<Operator> Operators;
 		/** 
 		* 
-		* Trace(json_spirit::mObject const& jNumericalParams, int site, Ut::Measurements& measurements,json_spirit::mObject const& jPreviousConfig)
+		* Trace(json const& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig)
 		* 
 		* Parameters :	jNumericalParams : storage of all the numerical parameters of the simulation
 		*				site : number of the site this refers to
@@ -110,10 +109,10 @@ namespace Tr {
 		* Description: 
 		*   If a previous configuration is available, insert all the indicated vertices. Else make it empty for the beginning
 		*/
-		Trace(json_spirit::mObject const& jNumericalParams, int site, Ut::Measurements& measurements,json_spirit::mObject const& jPreviousConfig) :
-		beta_(jNumericalParams.at("beta").get_real()),
-		U_(jNumericalParams.at("U").get_real()),
-		mu_(jNumericalParams.at("mu").get_real()),
+		Trace(json const& jNumericalParams, int site, Ut::Measurements& measurements,json const& jPreviousConfig) :
+		beta_(jNumericalParams["beta"]),
+		U_(jNumericalParams["U"]),
+		mu_(jNumericalParams["mu"]),
 		shift_(std::max(0., std::max(mu_*beta_, 2.*mu_*beta_ - U_*beta_))),
 		Tr00_0_(std::exp(-shift_)),
 		Tr00_1_(std::exp(mu_*beta_ - shift_)),
@@ -129,13 +128,13 @@ namespace Tr {
 			operators_[1] = new Operators();
 			
 			if(jPreviousConfig.size()) {
-				json_spirit::mObject const& jPreviousConfigSite = jPreviousConfig.at("Site " + boost::lexical_cast<std::string>(site)).get_obj();
+				json const & jPreviousConfigSite = jPreviousConfig["Site " + std::to_string(site)];
 				for(int spin = 0; spin < 2; ++spin) {
-					json_spirit::mArray const&  jPreviousConfigSiteSpin = jPreviousConfigSite.at("Spin " + boost::lexical_cast<std::string>(spin)).get_array();
+					json const& jPreviousConfigSiteSpin = jPreviousConfigSite["Spin " + std::to_string(spin)];
 					std::size_t size = jPreviousConfigSiteSpin.size();
 					for(std::size_t i = 0; i < size; ++i) {
-						int type = jPreviousConfigSiteSpin[i].get_obj().at("type").get_int();
-						double time = jPreviousConfigSiteSpin[i].get_obj().at("time").get_real();
+						int type = jPreviousConfigSiteSpin[i]["type"];
+						double time = jPreviousConfigSiteSpin[i]["time"];
 						operators_[spin]->insert(Operator(type, time));
 					}
 				}
@@ -346,8 +345,8 @@ namespace Tr {
 			
 			//Here we compute the observables depending on the number of operators we have in our timeline
 			if(operators(0).size() && operators(1).size()) {
-				acc_.N += sign*.5*(lenght_[0] + lenght_[1])/beta_;
-				acc_.D += sign*overlap_/beta_;
+				acc_.n += sign*.5*(lenght_[0] + lenght_[1])/beta_;
+				acc_.docc += sign*overlap_/beta_;
 				acc_.Sz += sign*.5*(lenght_[0] - lenght_[1])/beta_;
 				acc_.Chi[0] += sign*.25*(lenght_[0] - lenght_[1])*(lenght_[0] - lenght_[1])/beta_;
 
@@ -358,8 +357,8 @@ namespace Tr {
 				double exp = std::exp(-std::abs(arg));
 				double fact = (arg < .0 ? exp/(1. + exp) : 1./(1. + exp));
 				
-				acc_.N += sign*(beta_*fact + lenght_[0])/(2.*beta_);
-				acc_.D += sign*lenght_[0]*fact/beta_;
+				acc_.n += sign*(beta_*fact + lenght_[0])/(2.*beta_);
+				acc_.docc += sign*lenght_[0]*fact/beta_;
 				acc_.Sz += sign*(-beta_*fact + lenght_[0])/(2.*beta_);
 				acc_.Chi[0] += sign*.25*((beta_ - 2.*lenght_[0])*fact + lenght_[0]*lenght_[0]/beta_);
 				//this next expression is only good when for different sites. This is taken into account in the Markovchain file
@@ -369,15 +368,15 @@ namespace Tr {
 				double exp = std::exp(-std::abs(arg));
 				double fact = (arg < .0 ? exp/(1. + exp) : 1./(1. + exp));
 				
-				acc_.N += sign*(beta_*fact + lenght_[1])/(2.*beta_);
-				acc_.D += sign*lenght_[1]*fact/beta_;
+				acc_.n += sign*(beta_*fact + lenght_[1])/(2.*beta_);
+				acc_.docc += sign*lenght_[1]*fact/beta_;
 				acc_.Sz += sign*(beta_*fact - lenght_[1])/(2.*beta_);
 				acc_.Chi[0] += sign*.25*((beta_ - 2.*lenght_[1])*fact + lenght_[1]*lenght_[1]/beta_);
 				//This expression is only good when for different sites. This is taken into account in the Markovchain file
 				chiTemp_[0] =  .5*(beta_*fact - lenght_[1]);
 			} else {
-				acc_.N += sign*(Tr00_1_ + Tr00_2_)/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
-				acc_.D += sign*Tr00_2_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
+				acc_.n += sign*(Tr00_1_ + Tr00_2_)/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
+				acc_.docc += sign*Tr00_2_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
 				acc_.Sz = .0;
 				acc_.Chi[0] += sign*beta_/2.*Tr00_1_/(Tr00_0_ + 2.*Tr00_1_ + Tr00_2_);
 				//This expression is only good when for different sites. This is taken into account in the Markovchain file
@@ -435,15 +434,15 @@ namespace Tr {
 		*/
 		void store(Ut::Measurements& measurements, int site, Meas& meas, int NMeas) {
 			acc_.k /= NMeas; 
-			acc_.N /= NMeas; 
+			acc_.n /= NMeas; 
 			acc_.Sz /= NMeas; 
-			acc_.D /= NMeas; 
+			acc_.docc /= NMeas; 
 			acc_.Chi /= NMeas;
 			
-			std::string s = boost::lexical_cast<std::string>(site);
+			std::string s = std::to_string(site);
 			measurements["k_" + s] << acc_.k;
-			measurements["N_" + s] << acc_.N;
-			measurements["D_" + s] << acc_.D;
+			measurements["n_" + s] << acc_.n;
+			measurements["docc_" + s] << acc_.docc;
 			measurements["Sz_" + s] << acc_.Sz;
 			measurements["Chi0_" + s] << acc_.Chi[0];
 			
@@ -455,9 +454,9 @@ namespace Tr {
 			};
 			
 			meas.k += acc_.k; acc_.k = .0;
-			meas.N += acc_.N; acc_.N = .0;
+			meas.n += acc_.n; acc_.n = .0;
 			meas.Sz += acc_.Sz; acc_.Sz = .0;
-			meas.D += acc_.D; acc_.D = .0;
+			meas.docc += acc_.docc; acc_.docc = .0;
 			meas.Chi += acc_.Chi; acc_.Chi = .0;
 		};	
 		/** 
@@ -473,7 +472,7 @@ namespace Tr {
 			return acc_.Chi;
 		}	
 		/** 
-		* void saveConfig(json_spirit::mObject& jConfig,int site)
+		* void saveConfig(json& jConfig,int site)
 		* 
 		* Parameters :	jConfig : Object in which the configuration should be saved
 		*				site : number of the site (because we don't store it in the Object)
@@ -481,19 +480,19 @@ namespace Tr {
 		* Description: 
 		* 	Saves the current simulation state (the segement operators) to the jConfig object.
 		*/
-		void saveConfig(json_spirit::mObject& jConfig,int site) {
-			json_spirit::mObject jConfigSite;
+		void saveConfig(json& jConfig,int site) {
+			json jConfigSite;
 			for(int spin = 0; spin < 2; ++spin) {
-				json_spirit::mArray jConfigSiteSpin;
+				json jConfigSiteSpin;
 				for(Operators::const_iterator it = operators(spin).begin();  it != operators(spin).end(); ++it) {
-					json_spirit::mObject jElement;
+					json jElement;
 					jElement["type"] = it->type();
 					jElement["time"] = it->time();
 					jConfigSiteSpin.push_back(jElement);
 				}
-				jConfigSite["Spin " + boost::lexical_cast<std::string>(spin)] = jConfigSiteSpin;
+				jConfigSite["Spin " + std::to_string(spin)] = jConfigSiteSpin;
 			}
-			jConfig["Site "+ boost::lexical_cast<std::string>(site)] = jConfigSite;
+			jConfig["Site "+ std::to_string(site)] = jConfigSite;
 		};
 		
 		~Trace() {

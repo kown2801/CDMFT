@@ -8,57 +8,70 @@
 #include <map>
 #include <algorithm>
 #include <sstream>
-#include <json_spirit.h>
+#include "nlohmann_json.hpp"
 #include "Utilities.h"
+using json=nlohmann::json;
 
 namespace Hyb {
 
 	/** 
 	* 
-	* void read(json_spirit::mArray const& jReal, json_spirit::mArray const& jImag, double betaIn, std::vector<Ut::complex>& Out, double betaOut)
+	* void read(json const& jComponentIn, double betaOut)
 	* 
-	* Parameters :	jReal : real part of the hybridization function
-	*				jImag : imaginary part of the hybridization function
-	*				betaIn : beta for which the jReal(iwn) and JImag(iwn) were computed
-	*				Out : Hybridization function read
-	*				betaOut : beta of the program
+	* Parameters :	jComponentIn : component of the Matsubara function that is being read
+	*				betaOut : beta of the program in which the function needs to be transformed
+	*
+	* Returns:
+	*	A json object containing the real part ("real" attribute) and the imaginary part("imag" attribute) of the input function
+	*	with a beta adapted to the simualtion betaOut. 
+	*	The other attributes of jComponentIn are simply copied
 	*
 	* Description: 
-	*   Read the hybriodization function from the two arrays jReal and jImag
-	*	As we are in Fourrier space with Matsubara frequencies PI*(2*m+1)/betaIn, we need to adapt the read data to the beta in the simulation.
-	*	This function computes Hybridization(iwn) from Hybridization(iwm), wm = PI*(2*m+1)/betaIn, wn = PI*(2*n+1)/betaOut using linear interpolation
+	*   Reads the hybridization function from the jComponentIn array.
+	* 	I name beta = jComponentIn["beta"]
+	*	As we are in Fourrier space with Matsubara frequencies PI*(2*m+1)/beta, we need to adapt the read data to the beta in the simulation.
+	*	This function computes function(iwn) from function(iwm) with wm = PI*(2*m+1)/beta, wn = PI*(2*n+1)/betaOut using linear interpolation.
+	* 	The input function is (jComponentIn["real"] + i*jComponentIn["imag"])
 	* 
 	*/
-	void read(json_spirit::mArray const& jReal, json_spirit::mArray const& jImag, double betaIn, std::vector<Ut::complex>& Out, double betaOut) {
-		if(jReal.size() != jImag.size()) 
+	json read(json const& jComponentIn, double betaOut) {
+		json jComponentOut = jComponentIn;
+		double const betaIn = jComponentIn["beta"];
+		if(jComponentIn["real"].size() != jComponentIn["imag"].size()) 
 			throw std::runtime_error("Missmatch of real and imaginary array lengths.");
 		
+		jComponentOut["real"] = json::array();
+		jComponentOut["imag"] = json::array();
 		int n = 0;
-		for(int m = 1; m < static_cast<int>(jReal.size()); ++m) { 
+		for(int m = 1; m < static_cast<int>(jComponentIn["real"].size()); ++m) { 
 			double z0 = M_PI*(2*m - 1)/betaIn;
 			double z1 = M_PI*(2*m + 1)/betaIn;
 			
-			Ut::complex h0(jReal[m - 1].get_real(), jImag[m - 1].get_real());
-			Ut::complex h1(jReal[m].get_real(), jImag[m].get_real());
+			Ut::complex h0(jComponentIn["real"][m - 1], jComponentIn["imag"][m - 1]);
+			Ut::complex h1(jComponentIn["real"][m], jComponentIn["imag"][m]);
 			
 			for(; (2*n + 1)/betaOut <= (2*m + 1)/betaIn; ++n) {
 				double w = M_PI*(2*n + 1)/betaOut;
-				Out.push_back(h0 + (h1 - h0)*(w - z0)/(z1 - z0));
+				std::complex<double> value = h0 + (h1 - h0)*(w - z0)/(z1 - z0);
+				jComponentOut["real"].push_back(value.real());
+				jComponentOut["imag"].push_back(value.imag());
 			}
 		}
+		jComponentOut["beta"] = betaOut;
+		return jComponentOut;
 	};
 	
 	struct Function {
 		/** 
 		* 
-		* Function(std::string name, json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jEntry)
+		* Function(std::string name, json const& jNumericalParams, json const& jEntry)
 		* 
-		* Parameters :	name : name of the Hybridation Entry
+		* Parameters :	name : name of the Entry
 		*				jNumericalParams : numerical parameters of the simulation
-		*				jEntry : Hybridation Entry
+		*				jEntry : Entry
 		*
 		* Description: 
-		*   Reads the hybridation entry from the json Object jEntry.
+		*   Reads the matsubara entry from the json Object jEntry.
 		*	Transforms the entry(Matsubara frequencies) to imaginary time with a Fourrier Transform
 		* 	The little trick here is the following : 
 		*		As the self-energy computed with this hybridation has high statisctical noise at high Matsubara frequency, we use a trick to compute the hybridation to correct this noise.
@@ -67,26 +80,28 @@ namespace Hyb {
 		*		For more details, see appendix B.3 and B.1 of E. Gull's PHD Thesis (link: https://www.research-collection.ethz.ch/handle/20.500.11850/104013)
 		* 	Stores the result for use in the Program
 		*/
-		Function(std::string name, json_spirit::mObject const& jNumericalParams, json_spirit::mObject const& jEntry) : 
-		beta_(jNumericalParams.at("beta").get_real()), 
-		nItH_(jNumericalParams.at("EHyb").get_real()*jNumericalParams.at("EHyb").get_real()*beta_ + 1), 
+		Function(std::string name, json const& jNumericalParams, json const& jEntry) : 
+		beta_(jNumericalParams["beta"]), 
+		nItH_(jNumericalParams["EHyb"].get<double>()*jNumericalParams["EHyb"].get<double>()*beta_ + 1), 
 		hyb_(new double[nItH_ + 1]) {
 			std::cout << "Initialising data entry " << name << " ... ";
 			
-			double const FM = jEntry.at("First Moment").get_real(); 
-			double const SM = jEntry.at("Second Moment").get_real();
+			double const FM = jEntry["First Moment"]; 
+			double const SM = jEntry["Second Moment"];
 			
 			for(int i = 0; i < nItH_ + 1; ++i) {
 				double time = beta_*i/static_cast<double>(nItH_);
 				hyb_[i] = -FM/2. + SM*(time - beta_/2.)/2.;
 			}
 			   
-			std::vector<Ut::complex> hyb;
-			read(jEntry.at("real").get_array(), jEntry.at("imag").get_array(), jEntry.at("beta").get_real(), hyb, beta_);
-				
-			for(unsigned int m = 0; m < hyb.size(); ++m) {
+			/* Adapts the Hyb entry to the current beta_ */
+			json jHybWithRightBeta = read(jEntry, beta_);
+			json jReal = jHybWithRightBeta["real"];
+			json jImag = jHybWithRightBeta["imag"];
+			/* Creates the imaginary time data */
+			for(unsigned int m = 0; m < jReal.size(); ++m) {
 				Ut::complex z(.0, M_PI*(2*m + 1)/beta_);
-				Ut::complex value = hyb[m] - FM/z - SM/(z*z);
+				Ut::complex value = std::complex<double>(jReal[m],jImag[m]) - FM/z - SM/(z*z);
 				for(int i = 0; i < nItH_ + 1; ++i) {
 					double arg = M_PI*(2*m + 1)*i/static_cast<double>(nItH_); 
 					hyb_[i] += 2./beta_*(value.real()*std::cos(arg) + value.imag()*std::sin(arg));
@@ -116,59 +131,17 @@ namespace Hyb {
 	};
 	
 	//------------------------------------------------------------------------------------------------------------------------------------------
-	
-	struct Read : public std::vector<Ut::complex> {
-		Read(json_spirit::mObject const& jEntry) {
-			std::cout << "Reading in data file ... ";
-
-			beta_ = jEntry.at("beta").get_real(); 
-			FM_ = jEntry.at("First Moment").get_real();
-			SM_ = jEntry.at("Second Moment").get_real();
-			
-			read(jEntry.at("real").get_array(), jEntry.at("imag").get_array(), jEntry.at("beta").get_real(), *this, beta_);
-			
-			std::cout << "Ok" << std::endl;
-		};
-			
-		double beta() const { return beta_;};
-		double FM() const { return FM_;};
-		double SM() const { return SM_;};				
-	private:
-		double beta_;
-		double FM_;
-		double SM_;
-	};
-	
-	//---------------------------------------------------------------------------------------------------------------------------------
-	
-	struct Write : public std::vector<Ut::complex> {
-		Write() : FM_(.0), SM_(.0) {};
-		double& FM() { return FM_;};
-		double& SM() { return SM_;};
-		
-		void write(double beta, json_spirit::mObject& jEntry) {	
-			std::cout << "Writing function ... ";
-			
-			jEntry["beta"] = beta; 
-			jEntry["First Moment"] = FM_;  
-			jEntry["Second Moment"] = SM_;
-            			
-			std::vector<double> real(size());
-			std::vector<double> imag(size());			
-			for(std::size_t n = 0; n < size(); ++n) {
-				real[n] = at(n).real();
-				imag[n] = at(n).imag();
- 			}
-			
-			jEntry["real"] = json_spirit::mValue(real.begin(), real.end()); 
-			jEntry["imag"] = json_spirit::mValue(imag.begin(), imag.end()); 
-	
-			std::cout << "Ok" << std::endl;
-		};
-	private:
-		double FM_;
-		double SM_;
-	};
+	/**************************************************************************************************/
+	/*              This function adapts the Matsubara data file completely to betaOut                */
+	/*                          The jObject is just changed in place                                  */
+	/**************************************************************************************************/
+	void accountForDifferentBeta(json& jObject,double const betaOut){
+		json const& jTemp = jObject;
+		/* It changes the beta for all components in jObject */
+		for (auto& el : jTemp.items()){
+			jObject[el.key()] = read(jTemp[el.key()],betaOut);
+		} 
+	}
 };
 
 #endif

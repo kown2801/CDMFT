@@ -1,4 +1,5 @@
 #include "MonteCarlo.h"
+#include "IO.h"
 
 int main(int argc, char** argv)
 {
@@ -12,29 +13,30 @@ int main(int argc, char** argv)
 		std::string inputFolder = argv[1];
 		std::string outputFolder = argv[2];
 		std::string fileName = argv[3];
-		std::time_t time;
 		
+		std::time_t time;
 		mpi::cout = mpi::every;
 		mpi::cout << "Start task at " << std::ctime(&(time = std::time(NULL))) << std::flush;
 		
 		Ut::Simulation simulation(inputFolder, outputFolder, fileName);
-		json_spirit::mObject const& jParams = simulation.params();
-		
+		json const& jParams = simulation.params();
 		Ma::MarkovChain* markovChain = 0;
 		
 		{	
-			//Reading all the input files and keeping in memory the output filename
-
-			json_spirit::mValue jHyb;
-			mpi::read_json(inputFolder + jParams.at("HYB").get_str(), jHyb);
+			//Reading all the input files and creating the Markov Chain at Ma::MarkovChain
+			json jHyb;
+			std::string hybFileName = jParams["HYB"];
+			mpi::read_json(inputFolder + hybFileName, jHyb);
 			
-			json_spirit::mValue jLink;
-			mpi::read_json(inputFolder + jParams.at("LINK").get_str(), jLink);
+			json jLink;
+			std::string linkFileName = jParams["LINK"];
+			mpi::read_json(inputFolder + linkFileName,jLink);
 
-			markovChain = new Ma::MarkovChain(jParams, jHyb.get_obj(), jLink.get_array(),simulation);
+			markovChain = new Ma::MarkovChain(jParams, jHyb, jLink,simulation);
 		}
-
+		//Start the simulation 
 		MC::MonteCarlo(*markovChain, simulation);
+		//End of simulation
 		
 		delete markovChain; markovChain = 0;
 		

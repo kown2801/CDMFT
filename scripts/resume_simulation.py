@@ -1,4 +1,3 @@
-#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python/3.8.0/bin/python3.8
 import os
 import json
 import shutil

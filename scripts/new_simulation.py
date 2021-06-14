@@ -1,4 +1,3 @@
-#!/cvmfs/soft.computecanada.ca/easybuild/software/2017/Core/python/3.8.0/bin/python3.8
 import os
 import json
 import shutil
@@ -60,7 +59,7 @@ def generate_simulation(all_args):
 	sh_destination.write('#SBATCH --job-name="' + all_args["ep"] + all_args["U"] + all_args["mu"] + '"\n')
 	for l in lines:
 		sh_destination.write(l)
-	sh_destination.write(os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(all_args["iterations"]) + " 1")
+	sh_destination.write("python " + os.path.join(this_directory_from_file_dir,"launch.py") + " " + files_path + " " + str(all_args["iterations"]) + " 1")
 	del all_args["iterations"]
 	sh_destination.close()
 	#End creation run.sh
@@ -75,13 +74,15 @@ def generate_simulation(all_args):
 			raise Exception(i + " can't be included in the params file if it is not declared in the one in scripts/BACKUP_START")
 		params_json[i] = type(params_json[i])(all_args[i])
 	params_json["HYB"] = "Hyb1.json"
+	
 	f = open(os.path.join(files_path,"IN/params1.json"),"w")
-	shutil.copy(os.path.join(backup_path,"LinkA.json"),os.path.join(files_path,"IN/LinkA.json"))
-	shutil.copy(os.path.join(backup_path,"LinkN.json"),os.path.join(files_path,"IN/LinkN.json"))
-	f.write(json.dumps(params_json, indent=4,sort_keys=True))
+	f.write(json.dumps(params_json, indent='\t',sort_keys=True))
 	f.close()
 	#End creation param1.json
 
+	# We put the Link file in 
+	shutil.copy(os.path.join(backup_path,"Link.json"),os.path.join(files_path,"IN/Link.json"))
+	
 	#Begin start simulation
 	os.chdir(files_path)
 	subprocess.run(["sbatch","run.sh"])
